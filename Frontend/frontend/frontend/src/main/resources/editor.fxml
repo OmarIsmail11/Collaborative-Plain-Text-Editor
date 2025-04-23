@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.frontend.jfx.PrimaryController">
+    <!-- Left Sidebar -->
+    <left>
+        <VBox spacing="10" style="-fx-background-color: #f0f0f0; -fx-padding: 10;">
+            <!-- Viewer Code Section -->
+            <Label text="VIEWER CODE" style="-fx-font-weight: bold;"/>
+            <HBox spacing="5">
+                <Label text="#yq1xrx" fx:id="viewerCodeLabel"/>
+                <Button text="Copy" fx:id="copyViewerButton" onAction="#copyViewerCode"/>
+            </HBox>
+
+            <!-- Editor Code Section -->
+            <Label text="EDITOR CODE" style="-fx-font-weight: bold;"/>
+            <HBox spacing="5">
+                <Label text="#1Je02K" fx:id="editorCodeLabel"/>
+                <Button text="Copy" fx:id="copyEditorButton" onAction="#copyEditorCode"/>
+            </HBox>
+
+            <!-- Active Users Section -->
+            <Label text="ACTIVE USERS" style="-fx-font-weight: bold;"/>
+            <VBox spacing="5">
+                <HBox spacing="5">
+                    <Label text="○"/>
+                    <Label text="Anonymous Frog (you)"/>
+                </HBox>
+                <HBox spacing="5">
+                    <Label text="○"/>
+                    <Label text="Anonymous Crab" visible="false" id="Crab"/>
+                </HBox>
+                <HBox spacing="5">
+                    <Label text="○"/>
+                    <Label text="Anonymous Fox" visible="false" id="Fox"/>
+                </HBox>
+                <HBox spacing="5">
+                    <Label text="○"/>
+                    <Label text="Anonymous Penguin" visible="false" id="Penguin"/>
+                </HBox>
+            </VBox>
+        </VBox>
+    </left>
+
+    <!-- Center Text Editor -->
+    <center>
+        <TextArea fx:id="textEditor"  promptText="Enter your text here..." prefWidth="600" prefHeight="400"/>
+    </center>
+
+    <!-- Top Buttons (Undo, Redo, Export) -->
+    <top>
+        <HBox spacing="5" style="-fx-padding: 5; -fx-background-color: #e0e0e0;">
+            <Button text="Undo" fx:id="undoButton" onAction="#undoAction"/>
+            <Button text="Redo" fx:id="redoButton" onAction="#redoAction"/>
+            <Button text="Export" fx:id="exportButton" onAction="#exportAction"/>
+        </HBox>
+    </top>
+</BorderPane>

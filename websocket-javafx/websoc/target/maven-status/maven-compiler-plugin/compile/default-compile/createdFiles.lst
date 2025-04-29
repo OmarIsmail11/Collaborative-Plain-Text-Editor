@@ -1,6 +1,9 @@
+com\example\Controllers\NewDocumentDialogController.class
 com\example\Controllers\HomeController.class
 module-info.class
 com\example\App.class
 com\example\Controllers\PrimaryController.class
+com\example\Service\Document.class
+com\example\Service\routeToController$CreateDocumentRequest.class
 com\example\Controllers\PrimaryController$Comment.class
 com\example\Service\routeToController.class

@@ -10,6 +10,7 @@ import java.util.Optional;
 import java.io.IOException;
 import com.example.Service.routeToController;
 import com.example.Service.Document;
+import com.example.config.webSocketConfig;
 
 public class HomeController {
 
@@ -58,11 +59,25 @@ public class HomeController {
             if (!name.trim().isEmpty() && !username.trim().isEmpty()) {
                 try {
                     try {
-                        Document doc = routeToController.createNewDocument(name, username);
+                        Document newDoc = routeToController.createNewDocument(name, username);
+                        if (newDoc != null) {
+                            String editorCode = newDoc.getEditorCode(); // Use this for viewer/editor
+                            String viewerCode = newDoc.getViewerCode();
+                            String docName = newDoc.getDocName();
+                            String content = newDoc.getText();
+                        } else {
+                            System.err.println("Failed to create document");
+                            return;
+                        }
                     } catch (Exception e) {
                         System.out.println("Null fel doc hasalaha ana " + e.getMessage());
                     }
+                    // to do zawed fel load editor page 3 args
+                    //editor code w viewer code fel tab el 3al shemal
+                    //content fel textArea
+
                     loadEditorPage(false, name, username);
+                    webSocketConfig.connectToWebSocket();
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());
                 }

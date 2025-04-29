@@ -1,6 +1,5 @@
 package com.example.Controllers;
 
-
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.fxml.FXML;
@@ -47,8 +46,21 @@ public class PrimaryController {
     @FXML
     private VBox commentsContainer;
 
+    @FXML
+    private Label currentUserLabel;
+
+    @FXML
+    private Label crabUserLabel;
+
+    @FXML
+    private Label foxUserLabel;
+
+    @FXML
+    private Label penguinUserLabel;
+
     private boolean isReadOnly = false;
-    private StringProperty textProperty = new SimpleStringProperty(""); // Expose text content as a property
+    private StringProperty textProperty = new SimpleStringProperty("");
+    private String documentName;
 
     // Store comments with their text range and index
     private static class Comment {
@@ -56,7 +68,7 @@ public class PrimaryController {
         int startPosition;
         int endPosition;
         String commentedText;
-        int index; // Unique index for display (e.g., [1], [2])
+        int index;
 
         Comment(String content, int startPosition, int endPosition, String commentedText, int index) {
             this.content = content;
@@ -68,7 +80,8 @@ public class PrimaryController {
     }
 
     private List<Comment> comments = new ArrayList<>();
-    private int commentCounter = 0; // For assigning unique indices to comments
+    private int commentCounter = 0;
+    private List<Label> availableUserLabels;
 
     @FXML
     private void initialize() {
@@ -81,6 +94,17 @@ public class PrimaryController {
         // Request focus on TextArea after initialization
         textEditor.requestFocus();
 
+        // Initialize available user labels
+        availableUserLabels = new ArrayList<>();
+        availableUserLabels.add(crabUserLabel);
+        availableUserLabels.add(foxUserLabel);
+        availableUserLabels.add(penguinUserLabel);
+
+        // Add listener to textProperty to check for comment deletions
+        textEditor.textProperty().addListener((observable, oldValue, newValue) -> {
+            checkAndRemoveDeletedComments();
+        });
+
         // Debug: Print initial state
         System.out.println("Editor initialized. Read-only: " + isReadOnly);
     }
@@ -92,11 +116,9 @@ public class PrimaryController {
             return;
         }
 
-        // Check if there’s a selection
         int selectionStart = textEditor.getSelection().getStart();
         int selectionEnd = textEditor.getSelection().getEnd();
         if (selectionStart != selectionEnd) {
-            // Prompt the user for the comment content
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("Add Comment");
             dialog.setHeaderText("Enter your comment:");
@@ -110,7 +132,7 @@ public class PrimaryController {
                     Comment comment = new Comment(content, selectionStart, selectionEnd, commentedText, commentCounter);
                     comments.add(comment);
                     displayComment(comment);
-                    textEditor.deselect(); // Clear selection after adding comment
+                    textEditor.deselect();
                     checkAndRemoveDeletedComments();
                 }
             });
@@ -120,21 +142,17 @@ public class PrimaryController {
     }
 
     private void displayComment(Comment comment) {
-        // Create a container for the comment and delete button
         HBox commentBox = new HBox(5);
         commentBox.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 5; -fx-background-radius: 5;");
 
-        // Create a label for the comment
         Label commentLabel = new Label("[" + comment.index + "] " + comment.content + "\nCommented text: \"" +
                 (comment.commentedText.length() > 20 ? comment.commentedText.substring(0, 20) + "..." : comment.commentedText) + "\"");
         commentLabel.setWrapText(true);
         commentLabel.setStyle("-fx-padding: 5;");
 
-        // Add hover effect
         commentLabel.setOnMouseEntered(event -> commentBox.setStyle("-fx-background-color: #d0d0d0; -fx-padding: 5; -fx-background-radius: 5;"));
         commentLabel.setOnMouseExited(event -> commentBox.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 5; -fx-background-radius: 5;"));
 
-        // Add click handler to highlight the commented text
         commentLabel.setOnMouseClicked(event -> {
             int adjustedStart = Math.min(comment.startPosition, textEditor.getText().length());
             int adjustedEnd = Math.min(comment.endPosition, textEditor.getText().length());
@@ -142,7 +160,6 @@ public class PrimaryController {
             textEditor.requestFocus();
         });
 
-        // Add a delete button
         Button deleteButton = new Button("Delete");
         deleteButton.setStyle("-fx-font-size: 10px; -fx-background-color: #ff4444; -fx-text-fill: white;");
         deleteButton.setOnAction(event -> {
@@ -160,44 +177,38 @@ public class PrimaryController {
         Iterator<Comment> iterator = comments.iterator();
         while (iterator.hasNext()) {
             Comment comment = iterator.next();
-            int adjustedStart = Math.min(comment.startPosition, text.length());
-            int adjustedEnd = Math.min(comment.endPosition, text.length());
-
-            // If the text length is shorter than the comment's start position, it’s deleted
-            if (text.length() < comment.startPosition) {
+            // Check if the comment's range is still valid
+            if (comment.startPosition < 0 || comment.endPosition > text.length() || comment.startPosition >= comment.endPosition) {
                 iterator.remove();
-                commentsContainer.getChildren().removeIf(node -> {
-                    if (node instanceof HBox) {
-                        HBox hbox = (HBox) node;
-                        Label label = (Label) hbox.getChildren().get(0);
-                        return label.getText().startsWith("[" + comment.index + "]");
-                    }
-                    return false;
-                });
+                removeCommentFromUI(comment);
                 continue;
             }
 
             // Extract the current text in the comment's range
             String currentTextInRange;
             try {
-                currentTextInRange = text.substring(adjustedStart, adjustedEnd);
+                currentTextInRange = text.substring(comment.startPosition, comment.endPosition);
             } catch (StringIndexOutOfBoundsException e) {
                 currentTextInRange = "";
             }
 
-            // If the text in the range no longer matches the original commented text, remove the comment
-            if (!currentTextInRange.equals(comment.commentedText)) {
+            // Remove the comment if the text in the range no longer matches or is empty
+            if (!currentTextInRange.equals(comment.commentedText) || currentTextInRange.isEmpty()) {
                 iterator.remove();
-                commentsContainer.getChildren().removeIf(node -> {
-                    if (node instanceof HBox) {
-                        HBox hbox = (HBox) node;
-                        Label label = (Label) hbox.getChildren().get(0);
-                        return label.getText().startsWith("[" + comment.index + "]");
-                    }
-                    return false;
-                });
+                removeCommentFromUI(comment);
             }
         }
+    }
+
+    private void removeCommentFromUI(Comment comment) {
+        commentsContainer.getChildren().removeIf(node -> {
+            if (node instanceof HBox) {
+                HBox hbox = (HBox) node;
+                Label label = (Label) hbox.getChildren().get(0);
+                return label.getText().startsWith("[" + comment.index + "]");
+            }
+            return false;
+        });
     }
 
     @FXML
@@ -285,5 +296,42 @@ public class PrimaryController {
 
     public boolean isReadOnly() {
         return isReadOnly;
+    }
+
+    public void setDocumentName(String documentName) {
+        this.documentName = documentName;
+    }
+
+    public String getDocumentName() {
+        return documentName;
+    }
+
+    public void setCurrentUsername(String username) {
+        if (username != null && !username.trim().isEmpty()) {
+            currentUserLabel.setText(username + " (you)");
+        }
+    }
+
+    public void addUser(String username) {
+        if (username == null || username.trim().isEmpty()) {
+            return;
+        }
+        for (Label userLabel : availableUserLabels) {
+            if (!userLabel.isVisible()) {
+                userLabel.setText(username);
+                userLabel.setVisible(true);
+                break;
+            }
+        }
+    }
+
+    public void removeUser(String username) {
+        for (Label userLabel : availableUserLabels) {
+            if (userLabel.isVisible() && userLabel.getText().equals(username)) {
+                userLabel.setVisible(false);
+                userLabel.setText("Anonymous " + userLabel.getId());
+                break;
+            }
+        }
     }
 }

@@ -29,22 +29,22 @@
 
             <!-- Active Users Section -->
             <Label text="ACTIVE USERS" style="-fx-font-weight: bold;"/>
-            <VBox spacing="5">
+            <VBox fx:id="activeUsersContainer" spacing="5">
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Frog (you)" textFill="cornflowerblue"/>
+                    <Label fx:id="currentUserLabel" text="Anonymous Frog (you)" textFill="cornflowerblue"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Crab" visible="false" id="Crab" textFill="darkmagenta"/>
+                    <Label fx:id="crabUserLabel" text="Anonymous Crab" visible="false" id="Crab" textFill="darkmagenta"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Fox" visible="false" id="Fox" textFill="darkcyan"/>
+                    <Label fx:id="foxUserLabel" text="Anonymous Fox" visible="false" id="Fox" textFill="darkcyan"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Penguin" visible="false" id="Penguin" textFill="goldenrod"/>
+                    <Label fx:id="penguinUserLabel" text="Anonymous Penguin" visible="false" id="Penguin" textFill="goldenrod"/>
                 </HBox>
             </VBox>
 

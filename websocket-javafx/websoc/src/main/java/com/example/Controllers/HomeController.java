@@ -1,21 +1,11 @@
 package com.example.Controllers;
 
-
 import javafx.fxml.FXML;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonBar;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.GridPane;
+import javafx.scene.control.*;
 import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
 import javafx.scene.Scene;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Alert;
+
 import java.util.Optional;
 import java.io.IOException;
 import com.example.Service.routeToController;
@@ -24,8 +14,6 @@ import com.example.Service.Document;
 public class HomeController {
 
     private routeToController routeToController = new routeToController();
-    private String username = "user1";
-
 
     @FXML
     private Button newDocButton;
@@ -39,73 +27,47 @@ public class HomeController {
     @FXML
     private TextField sessionCodeField;
 
-
-    @FXML
-    private TextField docNameField;
-
-
     private static final String VIEWER_CODE = "#yq1xrx";
     private static final String EDITOR_CODE = "#1Je02K";
 
     @FXML
-    private Dialog<ButtonType> newDocDialog; // Change type from String to ButtonType
-    
-    @FXML  //da el eshtaghalt feeh 
     private void handleNewDoc() throws IOException {
-        // Create the custom dialog
+        // Load the FXML dialog
+        FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/new_document_dialog.fxml"));
+        // If FXML is in src/main/resources/fxml/, use: getClass().getResource("/fxml/new_document_dialog.fxml")
+        DialogPane dialogPane = fxmlLoader.load();
+
+        // Get the controller
+        NewDocumentDialogController dialogController = fxmlLoader.getController();
+
+        // Create the dialog
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Create New Document");
-        dialog.setHeaderText("Enter document name:");
-        // el haye3mel el hetta dy yeghayaro el button wel field yekhaleeha b fxml msh java
-        // Set the button types
-        ButtonType createButtonType = new ButtonType("Create", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+        dialog.setDialogPane(dialogPane);
 
-        // Create the text field
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(10);
-        grid.setPadding(new Insets(20, 150, 10, 10));
-
-        TextField documentName = new TextField();
-        documentName.setPromptText("Document name");
-        grid.add(new Label("Name:"), 0, 0);
-        grid.add(documentName, 1, 0);
-
-        dialog.getDialogPane().setContent(grid);
-
-        // Convert the result to string when create button is clicked
-        dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == createButtonType) {
-                return documentName.getText();
-            }
-            return null;
+        // Set the result converter
+        dialog.setResultConverter(buttonType -> {
+            dialogController.processResult(buttonType);
+            return dialogController.getDocumentName();
         });
 
         // Show the dialog and process the result
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(name -> {
-            if (!name.trim().isEmpty()) {
+            String username = dialogController.getUsername();
+            if (!name.trim().isEmpty() && !username.trim().isEmpty()) {
                 try {
-                    
-                    try{Document doc = routeToController.createNewDocument(name,username);
-                    }catch (Exception e){
+                    try {
+                        Document doc = routeToController.createNewDocument(name, username);
+                    } catch (Exception e) {
                         System.out.println("Null fel doc hasalaha ana " + e.getMessage());
                     }
-                    
-                    /** el routeToController dah router beyeb3at lel controller el fel backend da el feeh el path el beyet3emelaha post/get
-                    /dy keda bete3mel post request lel backend bethot el document fel registry el ana 3amelha (el registry da file fel backend bel --)
-                    /(ben store feeh el docname wel username lesa hazabato yetbe3et bas lesa hashoof hayeb2a stored fen w ezay )
-                    * TODO: 3ayez el username el yethat fel label beta3 el active users
-                    * TODO: el document el haterga3 feeha code auto generated lel new documents 3ayzeen nehot el codes fel label
-                    * ! mehtageen nekhalas besor3a w bokra habda2 fel websocket server 
-                    */
-                    loadEditorPage(false);
+                    loadEditorPage(false, name, username);
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());
                 }
             } else {
-                showError("Invalid Input", "Please enter a document name.");
+                showError("Invalid Input", "Please enter both a document name and a username.");
             }
         });
     }
@@ -127,29 +89,51 @@ public class HomeController {
     @FXML
     private void handleJoin() throws IOException {
         String sessionCode = sessionCodeField.getText().trim();
-        if (sessionCode.equals(VIEWER_CODE)) {
-            loadEditorPage(true); // Viewer code -> read-only mode
-        } else if (sessionCode.equals(EDITOR_CODE)) {
-            loadEditorPage(false); // Editor code -> editable mode
+        boolean isViewer = sessionCode.equals(VIEWER_CODE);
+        boolean isEditor = sessionCode.equals(EDITOR_CODE);
+
+        if (isViewer || isEditor) {
+            // Prompt for username
+            TextInputDialog usernameDialog = new TextInputDialog();
+            usernameDialog.setTitle("Join Document");
+            usernameDialog.setHeaderText("Enter your username:");
+            usernameDialog.setContentText("Username:");
+            Optional<String> usernameResult = usernameDialog.showAndWait();
+
+            usernameResult.ifPresent(username -> {
+                if (!username.trim().isEmpty()) {
+                    try {
+                        // TODO: Verify session code with backend if needed
+                        loadEditorPage(isViewer, "Shared Document", username);
+                    } catch (IOException e) {
+                        showError("Error joining document", e.getMessage());
+                    }
+                } else {
+                    showError("Invalid Input", "Please enter a username.");
+                }
+            });
         } else {
             System.out.println("Invalid session code: " + sessionCode);
+            showError("Invalid Session Code", "Please enter a valid viewer or editor code.");
         }
     }
 
-    private void loadEditorPage(boolean readOnly) throws IOException {
+    private void loadEditorPage(boolean readOnly, String documentName, String username) throws IOException {
         // Load the editor page (editor.fxml)
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/editor.fxml"));
         Scene editorScene = new Scene(fxmlLoader.load(), 800, 500);
 
-        // Get the PrimaryController and set read-only mode
+        // Get the PrimaryController and set properties
         PrimaryController controller = fxmlLoader.getController();
         controller.setReadOnly(readOnly);
+        controller.setDocumentName(documentName);
+        controller.setCurrentUsername(username);
         setupTextChangeListener(controller);
 
         // Get the current stage (window) and set the new scene
         Stage stage = (Stage) newDocButton.getScene().getWindow();
         stage.setScene(editorScene);
-        stage.setTitle("Text Editor" + (readOnly ? " (Read-Only)" : ""));
+        stage.setTitle(documentName + (readOnly ? " (Read-Only)" : ""));
         stage.show();
     }
 
@@ -197,4 +181,3 @@ public class HomeController {
         joinButton.setStyle("-fx-background-color: #388e3c; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 5;");
     }
 }
-

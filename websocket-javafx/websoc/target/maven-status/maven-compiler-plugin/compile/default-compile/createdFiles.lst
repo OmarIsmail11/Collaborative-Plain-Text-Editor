@@ -1,4 +1,3 @@
-com\example\Service\DocumentRequest.class
 com\example\Controllers\HomeController.class
 module-info.class
 com\example\App.class

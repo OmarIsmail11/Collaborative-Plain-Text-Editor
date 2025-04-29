@@ -12,15 +12,16 @@ public class routeToController {
         this.baseUrl = "http://localhost:8080/";
     }
 
-    public void createNewDocument(String docName, String username) {
+    public Document createNewDocument(String docName, String username) {
         String url = baseUrl + "editor/create";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
-        DocumentRequest request = new DocumentRequest(docName, username);
-        HttpEntity<DocumentRequest> entity = new HttpEntity<>(request, headers);
+        Document request = new Document(docName);
+        HttpEntity<Document> entity = new HttpEntity<>(request, headers);
 
         ResponseEntity<String> response = restTemplate.postForEntity(url, entity, String.class);
         System.out.println("Response: " + response.getBody());
+        return response.getBody() != null ? new Document(response.getBody()) : null;
     }
 }

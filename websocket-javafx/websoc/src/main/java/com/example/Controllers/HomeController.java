@@ -19,6 +19,7 @@ import javafx.scene.control.Alert;
 import java.util.Optional;
 import java.io.IOException;
 import com.example.Service.routeToController;
+import com.example.Service.Document;
 
 public class HomeController {
 
@@ -49,13 +50,13 @@ public class HomeController {
     @FXML
     private Dialog<ButtonType> newDocDialog; // Change type from String to ButtonType
     
-       @FXML
+    @FXML  //da el eshtaghalt feeh 
     private void handleNewDoc() throws IOException {
         // Create the custom dialog
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Create New Document");
         dialog.setHeaderText("Enter document name:");
-
+        // el haye3mel el hetta dy yeghayaro el button wel field yekhaleeha b fxml msh java
         // Set the button types
         ButtonType createButtonType = new ButtonType("Create", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
@@ -86,7 +87,19 @@ public class HomeController {
         result.ifPresent(name -> {
             if (!name.trim().isEmpty()) {
                 try {
-                    routeToController.createNewDocument(name,username);
+                    
+                    try{Document doc = routeToController.createNewDocument(name,username);
+                    }catch (Exception e){
+                        System.out.println("Null fel doc hasalaha ana " + e.getMessage());
+                    }
+                    
+                    /** el routeToController dah router beyeb3at lel controller el fel backend da el feeh el path el beyet3emelaha post/get
+                    /dy keda bete3mel post request lel backend bethot el document fel registry el ana 3amelha (el registry da file fel backend bel --)
+                    /(ben store feeh el docname wel username lesa hazabato yetbe3et bas lesa hashoof hayeb2a stored fen w ezay )
+                    * TODO: 3ayez el username el yethat fel label beta3 el active users
+                    * TODO: el document el haterga3 feeha code auto generated lel new documents 3ayzeen nehot el codes fel label
+                    * ! mehtageen nekhalas besor3a w bokra habda2 fel websocket server 
+                    */
                     loadEditorPage(false);
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+
+<VBox xmlns="http://javafx.com/javafx/13" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.Controllers.HomeController" alignment="CENTER" spacing="20" style="-fx-background-color: #eceff1; -fx-padding: 30;">
+    <!-- Card-like container -->
+    <VBox alignment="CENTER" spacing="20" style="-fx-background-color: white; -fx-background-radius: 10; -fx-padding: 30; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 2);">
+        <!-- Title and Subtitle -->
+        <Label text="TextSync Editor" style="-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #263238;"/>
+        <Label text="Collaborate in Real-Time" style="-fx-font-size: 16px; -fx-text-fill: #546e7a;"/>
+
+        <!-- Buttons Section -->
+        <HBox alignment="CENTER" spacing="15">
+            <Button fx:id="newDocButton" onAction="#handleNewDoc" text="New Doc." style="-fx-background-color: #0288d1; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 5;" onMouseEntered="#onNewDocMouseEntered" onMouseExited="#onNewDocMouseExited"/>
+            <Button fx:id="browseButton" onAction="#handleBrowse" text="Browse..." style="-fx-background-color: #455a64; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 5;" onMouseEntered="#onBrowseMouseEntered" onMouseExited="#onBrowseMouseExited"/>
+        </HBox>
+
+        
+        <!-- Join Session Section -->
+        <HBox alignment="CENTER" spacing="10">
+            <TextField fx:id="sessionCodeField" promptText="Enter Session Code" prefWidth="200" style="-fx-font-size: 14px; -fx-background-radius: 5; -fx-border-radius: 5; -fx-border-color: #b0bec5;"/>
+            <Button fx:id="joinButton" onAction="#handleJoin" text="Join" style="-fx-background-color: #388e3c; -fx-text-fill: white; -fx-font-size: 14px; -fx-padding: 10 20; -fx-background-radius: 5;" onMouseEntered="#onJoinMouseEntered" onMouseExited="#onJoinMouseExited"/>
+        </HBox>
+    </VBox>
+</VBox>

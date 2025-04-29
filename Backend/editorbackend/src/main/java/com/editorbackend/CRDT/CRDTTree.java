@@ -1,11 +1,11 @@
-package com.editorbackend.editorbackend;
+package com.editorbackend.CRDT;
 
 
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
-class CRDTTree {
+public class CRDTTree {
     private CRDTNode root;
     private CRDTNode visibleRoot;
     private List<CRDTNode> nodeList;
@@ -20,13 +20,16 @@ class CRDTTree {
         this.visibleRoot = new CRDTNode("ROOT", '\0', LocalDateTime.now(), false, null, null, -1);
         visibleNodes.add(visibleRoot);
     }
-
+/// ANANANAN
+/// 
+/// 
+/// 
     public CRDTNode insert(char value, int index, LocalDateTime timestamp, String userID) {
         visibleText.clear();
         visibleNodes.clear();
         dfsBuildText(root);
         dfsBuildVisibleNodes(root);
-
+// 
         CRDTNode parent;
         int insertionIndex;
 

@@ -1,4 +1,4 @@
-package com.editorbackend.editorbackend;
+package com.editorbackend.CRDT;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -6,7 +6,7 @@ import java.util.*;
 
 
 
-class CRDTNode {
+public class CRDTNode {
     private String id;
     private char value;
     private LocalDateTime timestamp;

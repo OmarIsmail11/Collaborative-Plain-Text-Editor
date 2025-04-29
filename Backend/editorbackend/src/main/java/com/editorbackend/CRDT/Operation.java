@@ -1,8 +1,8 @@
-package com.editorbackend.editorbackend;
+package com.editorbackend.CRDT;
 
 
 
-class Operation {
+public class Operation {
     private String type;
     private CRDTNode node;
     private int index;
@@ -17,3 +17,9 @@ class Operation {
     public CRDTNode getNode() { return node; }
     public int getIndex() { return index; }
 }
+
+
+// insert 
+// push --> undo 
+// pop--> insert setdeleted 
+//

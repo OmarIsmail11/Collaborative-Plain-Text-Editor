@@ -1,4 +1,4 @@
-package com.editorbackend.editorbackend;
+package com.editorbackend.CRDT;
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;

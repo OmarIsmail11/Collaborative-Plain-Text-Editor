@@ -43,5 +43,26 @@ public class webSocketConfig {
     }
     public static void connectToWebSocket() {
 
+        try {
+            // Create a WebSocket client
+            List<Transport> transports = Collections.singletonList(new WebSocketTransport(new StandardWebSocketClient()));
+            SockJsClient sockJsClient = new SockJsClient(transports);
+
+            WebSocketStompClient stompClient = new WebSocketStompClient(sockJsClient);
+            List<MessageConverter> converters = new ArrayList<>();
+            converters.add(new MappingJackson2MessageConverter()); // used to handle json messages
+            converters.add(new StringMessageConverter()); // used to handle raw string messages
+            stompClient.setMessageConverter(new CompositeMessageConverter(converters));
+            // Connect to the WebSocket server
+            String url = "ws://localhost:8080/ws"; // WebSocket endpoint
+            StompSessionHandler sessionHandler = new MyStompSessionHandler();
+            StompSession StompSession = stompClient.connectAsync(url, sessionHandler).get();
+
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+    }
+    public void close(){
+        this.stompSession.disconnect();
     }
 }

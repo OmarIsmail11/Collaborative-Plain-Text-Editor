@@ -14,15 +14,12 @@ import java.lang.Thread;
 
 public class User {
     private String userID;
-    private String email;
-    private String password;
+
     private Stack<Operation> undoStack;
     private Stack<Operation> redoStack;
 
     public User(String userID, String email, String password) {
         this.userID = userID;
-        this.email = email;
-        this.password = password;
         this.undoStack = new Stack<>();
         this.redoStack = new Stack<>();
     }

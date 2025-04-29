@@ -1,10 +1,14 @@
 package com.editorbackend.CRDT;
 
 
+import org.springframework.stereotype.Service;
+
 import java.util.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+
+@Service
 public class CRDTTree {
     private CRDTNode root;
     private CRDTNode visibleRoot;
@@ -20,10 +24,7 @@ public class CRDTTree {
         this.visibleRoot = new CRDTNode("ROOT", '\0', LocalDateTime.now(), false, null, null, -1);
         visibleNodes.add(visibleRoot);
     }
-/// ANANANAN
-/// 
-/// 
-/// 
+
     public CRDTNode insert(char value, int index, LocalDateTime timestamp, String userID) {
         visibleText.clear();
         visibleNodes.clear();

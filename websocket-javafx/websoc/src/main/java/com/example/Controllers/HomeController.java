@@ -103,34 +103,40 @@ public class HomeController {
 
     @FXML
     private void handleJoin() throws IOException {
+
         String sessionCode = sessionCodeField.getText().trim();
-        boolean isViewer = sessionCode.equals(VIEWER_CODE);
-        boolean isEditor = sessionCode.equals(EDITOR_CODE);
 
-        if (isViewer || isEditor) {
-            // Prompt for username
-            TextInputDialog usernameDialog = new TextInputDialog();
-            usernameDialog.setTitle("Join Document");
-            usernameDialog.setHeaderText("Enter your username:");
-            usernameDialog.setContentText("Username:");
-            Optional<String> usernameResult = usernameDialog.showAndWait();
+        Document newDoc = routeToController.getDocumentID(sessionCode);
+        if (newDoc != null) {
 
-            usernameResult.ifPresent(username -> {
-                if (!username.trim().isEmpty()) {
-                    try {
-                        // TODO: Verify session code with backend if needed
-                        loadEditorPage(isViewer, "Shared Document", username);
-                    } catch (IOException e) {
-                        showError("Error joining document", e.getMessage());
-                    }
-                } else {
-                    showError("Invalid Input", "Please enter a username.");
-                }
-            });
-        } else {
-            System.out.println("Invalid session code: " + sessionCode);
-            showError("Invalid Session Code", "Please enter a valid viewer or editor code.");
+        }else{
+            showError("Document not found","Recheck Session Code");
+            return;
         }
+
+        // Prompt for username
+        TextInputDialog usernameDialog = new TextInputDialog();
+        usernameDialog.setTitle("Join Document");
+        usernameDialog.setHeaderText("Enter your username:");
+        usernameDialog.setContentText("Username:");
+        Optional<String> usernameResult = usernameDialog.showAndWait();
+
+        usernameResult.ifPresent(username -> {
+            if (!username.trim().isEmpty()) {
+                try {
+
+                    if(sessionCode == newDoc.getEditorCode()){
+                        loadEditorPage(true, newDoc.getDocName(), username);
+                    }else{
+                        loadEditorPage(false, newDoc.getDocName(), username);
+                    }
+                } catch (IOException e) {
+                    showError("Error joining document", e.getMessage());
+                }
+            } else {
+                showError("Invalid Input", "Please enter a username.");
+            }
+        });
     }
 
     private void loadEditorPage(boolean readOnly, String documentName, String username) throws IOException {

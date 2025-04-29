@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import com.example.config.webSocketConfig;
 
 public class PrimaryController {
 
@@ -58,6 +59,7 @@ public class PrimaryController {
     @FXML
     private Label penguinUserLabel;
 
+    String sessioncode;
     private boolean isReadOnly = false;
     private StringProperty textProperty = new SimpleStringProperty("");
     private String documentName;
@@ -107,6 +109,13 @@ public class PrimaryController {
 
         // Debug: Print initial state
         System.out.println("Editor initialized. Read-only: " + isReadOnly);
+
+        try {
+            webSocketConfig.connectToWebSocket();
+        } catch (RuntimeException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("Connected to websocket with session code"+ sessioncode );
     }
 
     @FXML

@@ -13,7 +13,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
         // Enable a simple broker for subscriptions
-        config.enableSimpleBroker("/topic", "/queue"); // "/topic" for broadcasts, "/queue" for point-to-point
+        config.enableSimpleBroker("/topic"); // "/topic" for broadcasts
         // Prefix for messages sent from clients to the server
         config.setApplicationDestinationPrefixes("/app"); 
     }
@@ -21,6 +21,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // Register WebSocket endpoint and enable SockJS fallback
-        registry.addEndpoint("/ws").setAllowedOrigins("*").withSockJS();
+        registry.addEndpoint("/ws").withSockJS();
     }
 }

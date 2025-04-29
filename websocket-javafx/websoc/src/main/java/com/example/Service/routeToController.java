@@ -3,6 +3,8 @@ package com.example.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 
+import java.util.Collections;
+
 public class routeToController {
     private final RestTemplate restTemplate;
     private final String baseUrl;
@@ -10,6 +12,34 @@ public class routeToController {
     public routeToController() {
         this.restTemplate = new RestTemplate();
         this.baseUrl = "http://localhost:8080/";
+    }
+
+    public Document getDocumentID(String sessionCode) {
+        String url = baseUrl + "editor/get/"+sessionCode;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<Document> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    Document.class
+            );
+
+            Document doc = response.getBody();
+            if (doc != null) {
+                System.out.println("Fetched document: " + doc.getDocName());
+                return doc;
+            }
+            return null;
+        } catch (Exception e) {
+            System.err.println("Error fetching document: " + e.getMessage());
+            return null;
+        }
+
     }
 
     // Class to match backend's CreateDocumentRequest

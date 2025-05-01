@@ -1,5 +1,7 @@
 package com.example.Controllers;
 
+import com.example.Model.Operation;
+import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.fxml.FXML;
@@ -13,7 +15,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
-import com.example.config.webSocketConfig;
+import java.util.function.Consumer;
+
+import com.example.config.WebSocketConfig;
+
+import javax.swing.*;
 
 public class PrimaryController {
 
@@ -59,10 +65,11 @@ public class PrimaryController {
     @FXML
     private Label penguinUserLabel;
 
-    String sessioncode;
+    String sessionCode= "123";
     private boolean isReadOnly = false;
     private StringProperty textProperty = new SimpleStringProperty("");
     private String documentName;
+    private List<Operation> operationBuffer = new ArrayList<>();
 
     // Store comments with their text range and index
     private static class Comment {
@@ -98,30 +105,64 @@ public class PrimaryController {
 
         // Initialize available user labels
         availableUserLabels = new ArrayList<>();
-        availableUserLabels.add(crabUserLabel);
-        availableUserLabels.add(foxUserLabel);
-        availableUserLabels.add(penguinUserLabel);
+        if (crabUserLabel != null) availableUserLabels.add(crabUserLabel);
+        if (foxUserLabel != null) availableUserLabels.add(foxUserLabel);
+        if (penguinUserLabel != null) availableUserLabels.add(penguinUserLabel);
 
         // Add listener to textProperty to check for comment deletions
-        textEditor.textProperty().addListener((observable, oldValue, newValue) -> {
-            checkAndRemoveDeletedComments();
-        });
-
-        // Debug: Print initial state
-        System.out.println("Editor initialized. Read-only: " + isReadOnly);
-
-        try {
-            webSocketConfig.connectToWebSocket();
-        } catch (RuntimeException e) {
-            throw new RuntimeException(e);
+        if (textEditor != null) {
+            textEditor.textProperty().addListener((observable, oldValue, newValue) -> {
+                checkAndRemoveDeletedComments();
+            });
         }
-        System.out.println("Connected to websocket with session code"+ sessioncode );
+
+        // Debug: Print initial state and check if UI elements are properly initialized
+        System.out.println("Editor initialized. Read-only: " + isReadOnly);
+        printInitializationStatus();
+
+        initializeWebSocketAndDocument();
     }
+
+    // Debug method to check if UI elements are properly initialized
+    private void printInitializationStatus() {
+        System.out.println("textEditor: " + (textEditor != null ? "OK" : "NULL"));
+        System.out.println("commentsContainer: " + (commentsContainer != null ? "OK" : "NULL"));
+        System.out.println("currentUserLabel: " + (currentUserLabel != null ? "OK" : "NULL"));
+        System.out.println("crabUserLabel: " + (crabUserLabel != null ? "OK" : "NULL"));
+        System.out.println("foxUserLabel: " + (foxUserLabel != null ? "OK" : "NULL"));
+        System.out.println("penguinUserLabel: " + (penguinUserLabel != null ? "OK" : "NULL"));
+    }
+
+    private void initializeWebSocketAndDocument() {
+        try {
+            // Use a Consumer that adds to the operationBuffer and processes it
+            Consumer<Operation> operationHandler = operation -> {
+                operationBuffer.add(operation);
+
+            };
+            WebSocketConfig webSocketConfig = new WebSocketConfig();
+            webSocketConfig.connect(sessionCode);
+
+        } catch (RuntimeException e) {
+            System.err.println("Failed to initialize WebSocket: " + e.getMessage());
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Connection Error");
+            alert.setHeaderText("Failed to connect to WebSocket server");
+            alert.setContentText("Please ensure the server is running and try again.");
+            alert.showAndWait();
+        }
+    }
+
 
     @FXML
     private void addComment() {
         if (isReadOnly) {
             System.out.println("Cannot add comments in read-only mode.");
+            return;
+        }
+
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in addComment()");
             return;
         }
 
@@ -151,6 +192,11 @@ public class PrimaryController {
     }
 
     private void displayComment(Comment comment) {
+        if (commentsContainer == null) {
+            System.err.println("commentsContainer is null in displayComment()");
+            return;
+        }
+
         HBox commentBox = new HBox(5);
         commentBox.setStyle("-fx-background-color: #e0e0e0; -fx-padding: 5; -fx-background-radius: 5;");
 
@@ -182,6 +228,11 @@ public class PrimaryController {
     }
 
     private void checkAndRemoveDeletedComments() {
+        if (textEditor == null || commentsContainer == null) {
+            System.err.println("TextEditor or commentsContainer is null in checkAndRemoveDeletedComments()");
+            return;
+        }
+
         String text = textEditor.getText();
         Iterator<Comment> iterator = comments.iterator();
         while (iterator.hasNext()) {
@@ -210,11 +261,18 @@ public class PrimaryController {
     }
 
     private void removeCommentFromUI(Comment comment) {
+        if (commentsContainer == null) {
+            System.err.println("commentsContainer is null in removeCommentFromUI()");
+            return;
+        }
+
         commentsContainer.getChildren().removeIf(node -> {
             if (node instanceof HBox) {
                 HBox hbox = (HBox) node;
-                Label label = (Label) hbox.getChildren().get(0);
-                return label.getText().startsWith("[" + comment.index + "]");
+                if (hbox.getChildren().size() > 0 && hbox.getChildren().get(0) instanceof Label) {
+                    Label label = (Label) hbox.getChildren().get(0);
+                    return label.getText().startsWith("[" + comment.index + "]");
+                }
             }
             return false;
         });
@@ -222,6 +280,11 @@ public class PrimaryController {
 
     @FXML
     private void copyViewerCode() {
+        if (viewerCodeLabel == null) {
+            System.err.println("viewerCodeLabel is null in copyViewerCode()");
+            return;
+        }
+
         String code = viewerCodeLabel.getText();
         copyToClipboard(code);
         System.out.println("Copied Viewer Code to clipboard: " + code);
@@ -229,6 +292,11 @@ public class PrimaryController {
 
     @FXML
     private void copyEditorCode() {
+        if (editorCodeLabel == null) {
+            System.err.println("editorCodeLabel is null in copyEditorCode()");
+            return;
+        }
+
         String code = editorCodeLabel.getText();
         copyToClipboard(code);
         System.out.println("Copied Editor Code to clipboard: " + code);
@@ -243,12 +311,22 @@ public class PrimaryController {
 
     @FXML
     private void undoAction() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in undoAction()");
+            return;
+        }
+
         textEditor.undo();
         System.out.println("Undo action triggered");
     }
 
     @FXML
     private void redoAction() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in redoAction()");
+            return;
+        }
+
         textEditor.redo();
         System.out.println("Redo action triggered");
     }
@@ -259,10 +337,20 @@ public class PrimaryController {
     }
 
     public int getCursorPosition() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in getCursorPosition()");
+            return 0;
+        }
+
         return textEditor.getCaretPosition();
     }
 
     public int[] getCursorPositionRowColumn() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in getCursorPositionRowColumn()");
+            return new int[] {1, 1};
+        }
+
         int caretPos = textEditor.getCaretPosition();
         String text = textEditor.getText();
 
@@ -298,9 +386,13 @@ public class PrimaryController {
 
     public void setReadOnly(boolean readOnly) {
         this.isReadOnly = readOnly;
-        textEditor.setEditable(!readOnly);
-        System.out.println("Read-only mode set to: " + readOnly);
-        textEditor.requestFocus();
+        if (textEditor != null) {
+            textEditor.setEditable(!readOnly);
+            System.out.println("Read-only mode set to: " + readOnly);
+            textEditor.requestFocus();
+        } else {
+            System.err.println("TextEditor is null in setReadOnly()");
+        }
     }
 
     public boolean isReadOnly() {
@@ -316,6 +408,11 @@ public class PrimaryController {
     }
 
     public void setCurrentUsername(String username) {
+        if (currentUserLabel == null) {
+            System.err.println("currentUserLabel is null in setCurrentUsername() - check your editor.fxml file");
+            return;
+        }
+
         if (username != null && !username.trim().isEmpty()) {
             currentUserLabel.setText(username + " (you)");
         }
@@ -325,8 +422,14 @@ public class PrimaryController {
         if (username == null || username.trim().isEmpty()) {
             return;
         }
+
+        if (availableUserLabels == null || availableUserLabels.isEmpty()) {
+            System.err.println("availableUserLabels is null or empty in addUser()");
+            return;
+        }
+
         for (Label userLabel : availableUserLabels) {
-            if (!userLabel.isVisible()) {
+            if (userLabel != null && !userLabel.isVisible()) {
                 userLabel.setText(username);
                 userLabel.setVisible(true);
                 break;
@@ -335,12 +438,25 @@ public class PrimaryController {
     }
 
     public void removeUser(String username) {
+        if (availableUserLabels == null || availableUserLabels.isEmpty()) {
+            System.err.println("availableUserLabels is null or empty in removeUser()");
+            return;
+        }
+
         for (Label userLabel : availableUserLabels) {
-            if (userLabel.isVisible() && userLabel.getText().equals(username)) {
+            if (userLabel != null && userLabel.isVisible() && userLabel.getText().equals(username)) {
                 userLabel.setVisible(false);
                 userLabel.setText("Anonymous " + userLabel.getId());
                 break;
             }
         }
+    }
+
+    private void showError(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
 }

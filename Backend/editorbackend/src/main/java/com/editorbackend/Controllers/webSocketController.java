@@ -2,16 +2,23 @@ package com.editorbackend.Controllers;
 
 
 import com.editorbackend.CRDT.CRDTTree;
+import com.editorbackend.CRDTService.CRDTService;
+import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.stereotype.Controller;
 
 
 @Controller
 public class webSocketController {
-        private CRDTTree crdt;
+        private final CRDTService service;
 
-        public webSocketController(CRDTTree crdt) {
-            this.crdt = crdt;
+        public webSocketController(CRDTService service) {
+            this.service = service;
         }
+
+//        @MessageMapping("/editor/{docCode}")
+//        @SendTo("topic/editor/{docCode}")
+//        public
 
 
 

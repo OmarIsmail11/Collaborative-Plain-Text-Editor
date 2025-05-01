@@ -29,7 +29,7 @@
 
             <!-- Active Users Section -->
             <Label text="ACTIVE USERS" style="-fx-font-weight: bold;"/>
-            <VBox fx:id="activeUsersContainer" spacing="5">
+            <VBox spacing="5">
                 <HBox spacing="5">
                     <Label text="○"/>
                     <Label fx:id="currentUserLabel" text="Anonymous Frog (you)" textFill="cornflowerblue"/>

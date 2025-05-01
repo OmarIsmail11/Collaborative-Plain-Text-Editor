@@ -1,5 +1,6 @@
 package com.example.Service;
 
+import com.example.Model.Document;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 

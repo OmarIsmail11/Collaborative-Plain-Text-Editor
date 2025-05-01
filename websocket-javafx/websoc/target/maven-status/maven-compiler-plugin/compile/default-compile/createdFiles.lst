@@ -1,11 +1,14 @@
+com\example\config\WebSocketConfig$1.class
+com\example\Model\Document.class
 com\example\Controllers\NewDocumentDialogController.class
 com\example\Controllers\HomeController.class
 module-info.class
-com\example\config\webSocketConfig$MyStompSessionHandler.class
 com\example\App.class
-com\example\config\webSocketConfig.class
 com\example\Controllers\PrimaryController.class
-com\example\Service\Document.class
+com\example\config\WebSocketConfig.class
+com\example\config\WebSocketConfig$MyStompSessionHandler.class
 com\example\Service\routeToController$CreateDocumentRequest.class
+com\example\Model\CRDTNode.class
 com\example\Controllers\PrimaryController$Comment.class
+com\example\Model\Operation.class
 com\example\Service\routeToController.class

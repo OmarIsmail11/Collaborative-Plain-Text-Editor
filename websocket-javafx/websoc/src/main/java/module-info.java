@@ -21,4 +21,6 @@ module com.example {
     exports com.example;
     exports com.example.Controllers;
     exports com.example.Service;
+    exports com.example.Model;
+    opens com.example.Model to com.fasterxml.jackson.databind, javafx.fxml, spring.web;
 }

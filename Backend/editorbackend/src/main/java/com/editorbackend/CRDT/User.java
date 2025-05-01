@@ -18,7 +18,7 @@ public class User {
     private Stack<Operation> undoStack;
     private Stack<Operation> redoStack;
 
-    public User(String userID, String email, String password) {
+    public User(String userID) {
         this.userID = userID;
         this.undoStack = new Stack<>();
         this.redoStack = new Stack<>();

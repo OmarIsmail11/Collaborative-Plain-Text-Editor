@@ -1,4 +1,4 @@
-package com.example.Service;
+package com.example.Model;
 
 public class Document {
     private String DocName;

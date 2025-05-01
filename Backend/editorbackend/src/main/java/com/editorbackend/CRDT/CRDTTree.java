@@ -14,7 +14,7 @@ public class CRDTTree {
     private CRDTNode visibleRoot;
     private List<CRDTNode> nodeList;
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
-    private List<Character> visibleText = new ArrayList<>();
+    public List<Character> visibleText = new ArrayList<>();
     public List<CRDTNode> visibleNodes = new ArrayList<>();
 
     public CRDTTree() {

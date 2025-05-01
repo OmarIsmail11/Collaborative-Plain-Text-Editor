@@ -9,8 +9,8 @@ import javafx.scene.Scene;
 import java.util.Optional;
 import java.io.IOException;
 import com.example.Service.routeToController;
-import com.example.Service.Document;
-import com.example.config.webSocketConfig;
+import com.example.Model.Document;
+import com.example.config.WebSocketConfig;
 
 public class HomeController {
 
@@ -77,7 +77,6 @@ public class HomeController {
                     //content fel textArea
 
                     loadEditorPage(false, name, username);
-                    webSocketConfig.connectToWebSocket();
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());
                 }

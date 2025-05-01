@@ -25,11 +25,8 @@ import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
-
-
-public class webSocketConfig {
+public class WebSocketConfig{
     StompSession stompSession;
-
     private static class MyStompSessionHandler extends StompSessionHandlerAdapter {
         @Override
         public void afterConnected(StompSession session, StompHeaders connectedHeaders) {
@@ -41,7 +38,7 @@ public class webSocketConfig {
             System.err.println("An error occurred: " + exception.getMessage());
         }
     }
-    public static void connectToWebSocket() {
+    public void connect(String sessionCode) {
 
         try {
             // Create a WebSocket client
@@ -56,13 +53,39 @@ public class webSocketConfig {
             // Connect to the WebSocket server
             String url = "ws://localhost:8080/ws"; // WebSocket endpoint
             StompSessionHandler sessionHandler = new MyStompSessionHandler();
-            StompSession StompSession = stompClient.connectAsync(url, sessionHandler).get();
+            stompSession = stompClient.connectAsync(url, sessionHandler).get();
 
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
+
+
+            // First, subscribe to the topic
+            String topic = "/topic/poll/" + sessionCode;
+
+            stompSession.subscribe(topic, new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return String.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+
+
+                    System.out.println("○ Exits the program and closes the websocket connection when the user presses enter.");
+                }
+            });
+
+
+
+
     }
+
+
     public void close(){
         this.stompSession.disconnect();
     }
 }
+
+

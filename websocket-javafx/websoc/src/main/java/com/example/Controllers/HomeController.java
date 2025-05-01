@@ -60,12 +60,14 @@ public class HomeController {
                 try {
                     try {
                         Document newDoc = routeToController.createNewDocument(name, username);
-                        if (newDoc != null) {
+
                             String editorCode = newDoc.getEditorCode(); // Use this for viewer/editor
                             String viewerCode = newDoc.getViewerCode();
                             String docName = newDoc.getDocName();
-                            String content = newDoc.getText();
-                        } else {
+                            String content = newDoc.getDocText();
+                            String docID    = newDoc.getDocID();
+                            loadEditorPage(false,docName,username,docID);
+                            if (newDoc == null)
                             System.err.println("Failed to create document");
                             return;
                         }
@@ -76,7 +78,7 @@ public class HomeController {
                     //editor code w viewer code fel tab el 3al shemal
                     //content fel textArea
 
-                    loadEditorPage(false, name, username);
+
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());
                 }
@@ -104,8 +106,8 @@ public class HomeController {
     private void handleJoin() throws IOException {
 
         String sessionCode = sessionCodeField.getText().trim();
-
-        Document newDoc = routeToController.getDocumentID(sessionCode);
+        Document newDoc = new Document();
+         newDoc = routeToController.getDocumentID(sessionCode);
         if (newDoc != null) {
 
         }else{
@@ -125,9 +127,9 @@ public class HomeController {
                 try {
 
                     if(sessionCode == newDoc.getEditorCode()){
-                        loadEditorPage(true, newDoc.getDocName(), username);
+                        loadEditorPage(true, newDoc.getDocName(), username,newDoc.getDocID(), newDoc.getViewerCode(), newDoc.getEditorCode());
                     }else{
-                        loadEditorPage(false, newDoc.getDocName(), username);
+                        loadEditorPage(false, newDoc.getDocName(), username,newDoc.getDocID(), newDoc.getViewerCode(), newDoc.getEditorCode());
                     }
                 } catch (IOException e) {
                     showError("Error joining document", e.getMessage());
@@ -138,7 +140,7 @@ public class HomeController {
         });
     }
 
-    private void loadEditorPage(boolean readOnly, String documentName, String username) throws IOException {
+    private void loadEditorPage(boolean readOnly, String documentName, String username,String docID,String Viewer_Code,String Editor_Code) throws IOException {
         // Load the editor page (editor.fxml)
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/editor.fxml"));
         Scene editorScene = new Scene(fxmlLoader.load(), 800, 500);
@@ -146,8 +148,7 @@ public class HomeController {
         // Get the PrimaryController and set properties
         PrimaryController controller = fxmlLoader.getController();
         controller.setReadOnly(readOnly);
-        controller.setDocumentName(documentName);
-        controller.setCurrentUsername(username);
+        controller.InitializeDocContents(docID,documentName,username,Viewer_Code,Editor_Code);
         setupTextChangeListener(controller);
 
         // Get the current stage (window) and set the new scene

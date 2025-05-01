@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/editor")
 public class RestControllerHome {
@@ -41,4 +43,25 @@ public class RestControllerHome {
         Document newDoc = documentRegistry.createDocument(request.getName(), request.getAuthor());
         return ResponseEntity.ok(newDoc);
     }
+
+
+    @PatchMapping("/update/{code}")
+    public ResponseEntity<Document> updateDocument(@PathVariable String code, @RequestBody Map<String, String> body) {
+        Document doc = documentRegistry.getDocumentByCode(code);
+        if (doc == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String newText = body.get("text");
+        if (newText == null) {
+            return ResponseEntity.badRequest().body(null);
+        }
+
+
+        crdtService.updateDocumentText(doc, newText);
+
+        return ResponseEntity.ok(doc);
+    }
+
+
 }

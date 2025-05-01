@@ -4,11 +4,12 @@ import javax.print.Doc;
 
 public class Document {
     private String docID;
-    private String userName;
     private String DocName;
+    private String userName;
     private String viewerCode;
     private String editorCode;
     private String text;
+    private String sessionCode;
 
     // Default constructor for Jackson serialization
     public Document() {}
@@ -32,6 +33,8 @@ public class Document {
     public void setViewerCode(String viewerCode) { this.viewerCode = viewerCode; }
     public String getEditorCode() { return editorCode; }
     public void setEditorCode(String editorCode) { this.editorCode = editorCode; }
-    public String getText() { return text; }
+    public String getDocText() { return text; }
     public void setText(String text) { this.text = text; }
+    public String getDocID(){return this.docID;}
+    private String getUserName(){return this.userName;}
 }

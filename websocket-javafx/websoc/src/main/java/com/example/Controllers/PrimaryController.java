@@ -71,6 +71,8 @@ public class PrimaryController {
     private String documentName;
     private List<Operation> operationBuffer = new ArrayList<>();
 
+    private String DocID;
+
     // Store comments with their text range and index
     private static class Comment {
         String content;
@@ -458,5 +460,14 @@ public class PrimaryController {
         alert.setHeaderText(null);
         alert.setContentText(content);
         alert.showAndWait();
+    }
+
+    public void InitializeDocContents(String DocID,String DocumentName,String CurrentUserName, String Viewer_Code,String Editor_Code){
+        this.documentName = DocumentName;
+        this.DocID = DocID;
+        this.currentUserLabel.setText(CurrentUserName);
+        this.viewerCodeLabel.setText(Viewer_Code);
+        this.editorCodeLabel.setText(Editor_Code);
+
     }
 }

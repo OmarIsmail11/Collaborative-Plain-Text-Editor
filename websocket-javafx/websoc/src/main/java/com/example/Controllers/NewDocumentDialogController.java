@@ -14,6 +14,7 @@ public class NewDocumentDialogController {
 
     private String documentName;
     private String username;
+;
 
     @FXML
     private void initialize() {

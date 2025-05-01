@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class Document {
     private String docID;
@@ -19,6 +21,6 @@ public class Document {
     {
         this.DocName = docName;
         this.userName = userName;
-        this.docID = docName + "/" + userName;
+        this.docID = docName + "/" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
     }
 }

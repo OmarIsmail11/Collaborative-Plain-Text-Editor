@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Service
 public class DocumentRegistry {
-    private static final String filePath = "editorbackend/data/documents.json";  // Ensure "Database" directory exists
+    private static final String filePath = "data/documents.json";  // Ensure "Database" directory exists
     private Map<String, Document> documents = new HashMap<>();
     private Map<String, CRDTTree> crdtTrees = new HashMap<>();
     private Map<String, Map<String, User>> sessionUsers = new HashMap<>();

@@ -11,8 +11,10 @@
 .gradle/
 build/
 
-# Maven
-target/
+# Ignoring all target directories in front and back
+# Ignore all target directories in backend and frontend
+Backend/editorbackend/target/
+websocket-javafx/websoc/target/
 
 # Compiled class files
 *.class

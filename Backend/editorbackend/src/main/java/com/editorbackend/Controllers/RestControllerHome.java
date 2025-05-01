@@ -27,6 +27,13 @@ public class RestControllerHome {
         public void setAuthor(String author) { this.author = author; }
     }
 
+    public static class UpdateDocumentRequest {
+        private String text;
+        public String getText() { return text; }
+        public void setText(String text) { this.text = text; }
+    }
+
+
     @GetMapping("/get/{code}")
     public ResponseEntity<Document> LoadDocument(@PathVariable String code) {
         Document doc = documentRegistry.getDocumentByCode(code);
@@ -45,23 +52,17 @@ public class RestControllerHome {
     }
 
 
-    @PatchMapping("/update/{code}")
-    public ResponseEntity<Document> updateDocument(@PathVariable String code, @RequestBody Map<String, String> body) {
-        Document doc = documentRegistry.getDocumentByCode(code);
-        if (doc == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        String newText = body.get("text");
-        if (newText == null) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-
-        //crdtService.updateDocumentText(doc, newText);
+    @PostMapping("/update/{code}")
+    public ResponseEntity<Document> updateDocument(@PathVariable String code, @RequestBody UpdateDocumentRequest body) {
+        Document doc = documentRegistry.getDocumentByID(code);
+        String newText = body.getText();
+        System.out.println("THIS IS TEXT"+ newText);
+        doc.setText(newText);
+        documentRegistry.saveDocuments();
 
         return ResponseEntity.ok(doc);
     }
+
 
 
 }

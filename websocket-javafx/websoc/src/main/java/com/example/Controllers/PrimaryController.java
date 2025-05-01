@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import com.example.config.WebSocketConfig;
-
+import com.example.Service.routeToController;
 import javax.swing.*;
 
 public class PrimaryController {
@@ -74,6 +74,7 @@ public class PrimaryController {
     private StringProperty textProperty = new SimpleStringProperty("");
     private String documentName;
     private List<Operation> operationBuffer = new ArrayList<>();
+    private routeToController routeToController = new routeToController();
 
     private String DocID;
 
@@ -340,6 +341,10 @@ public class PrimaryController {
     @FXML
     private void exportAction() {
         System.out.println("Export action triggered");
+        String text = textEditor.getText();
+        System.out.println("THIS IS TEXT: " + text);
+        routeToController.saveDocument(this.DocID,text);
+
     }
 
     public int getCursorPosition() {

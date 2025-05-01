@@ -5,6 +5,8 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 public class routeToController {
     private final RestTemplate restTemplate;
@@ -42,6 +44,46 @@ public class routeToController {
         }
 
     }
+
+    public Document saveDocument(String docID, String text) {
+        String url = baseUrl + "editor/update/"+docID;
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+
+
+        Map<String, String> request = new HashMap<>();
+        request.put("text", text);
+        HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
+
+
+
+        try {
+            ResponseEntity<Document> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    Document.class
+            );
+
+            Document doc = response.getBody();
+            if (doc != null) {
+                System.out.println("Fetched document: " + doc.getDocName());
+                return doc;
+            }
+            return null;
+        } catch (Exception e) {
+            System.err.println("Error fetching document: " + e.getMessage());
+            return null;
+        }
+    }
+
+
+    public static class UpdateDocumentRequest {
+        private String text;
+        public String getText() { return text; }
+        public void setText(String text) { this.text = text; }
+    }
+
 
     // Class to match backend's CreateDocumentRequest
     public static class CreateDocumentRequest {
@@ -83,5 +125,7 @@ public class routeToController {
             System.err.println("Error creating document: " + e.getMessage());
             return null;
         }
+
     }
+
 }

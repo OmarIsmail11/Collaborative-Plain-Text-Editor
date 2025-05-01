@@ -2,6 +2,7 @@ package com.editorbackend.CRDTService;
 
 import com.editorbackend.CRDT.CRDTNode;
 import com.editorbackend.CRDT.User;
+import com.editorbackend.Model.Document;
 import com.editorbackend.Model.DocumentRegistry;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -117,4 +118,12 @@ public class CRDTService {
         }
         return sb.toString();
     }
+
+//    public void updateDocumentText(Document doc, String newText) {
+//        Document document = documentRegistry.getDocumentByCode();
+//
+//
+//
+//
+//    }
 }

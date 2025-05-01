@@ -61,6 +61,15 @@ public class DocumentRegistry {
         return null;
     }
 
+    public Document getDocumentByID(String docId) {
+        for (Document doc : documents.values()) {
+            if (doc.getDocID().equals(docId) ) {
+                return doc;
+            }
+        }
+        return null;
+    }
+
     public CRDTTree getCRDTTree(String code) {
         return crdtTrees.get(code);
     }
@@ -76,6 +85,7 @@ public class DocumentRegistry {
                 break;
             }
         }
+
     }
 
     public void saveDocuments() {

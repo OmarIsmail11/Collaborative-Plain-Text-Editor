@@ -21,6 +21,6 @@ public class Document {
     {
         this.DocName = docName;
         this.userName = userName;
-        this.docID = docName + "/" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
+        this.docID = docName + "-" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
     }
 }

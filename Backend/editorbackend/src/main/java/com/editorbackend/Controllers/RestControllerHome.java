@@ -58,7 +58,7 @@ public class RestControllerHome {
         }
 
 
-        crdtService.updateDocumentText(doc, newText);
+        //crdtService.updateDocumentText(doc, newText);
 
         return ResponseEntity.ok(doc);
     }

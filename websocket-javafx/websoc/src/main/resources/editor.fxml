@@ -32,19 +32,19 @@
             <VBox spacing="5">
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Frog (you)" textFill="cornflowerblue"/>
+                    <Label text="Anonymous Frog (you)" fx:id="currentUserLabel" textFill="cornflowerblue"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Crab" visible="false" id="Crab" textFill="darkmagenta"/>
+                    <Label text="Anonymous Crab" visible="false" fx:id="Crab" textFill="darkmagenta"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Fox" visible="false" id="Fox" textFill="darkcyan"/>
+                    <Label text="Anonymous Fox" visible="false" fx:id="Fox" textFill="darkcyan"/>
                 </HBox>
                 <HBox spacing="5">
                     <Label text="○"/>
-                    <Label text="Anonymous Penguin" visible="false" id="Penguin" textFill="goldenrod"/>
+                    <Label text="Anonymous Penguin" visible="false" fx:id="Penguin" textFill="goldenrod"/>
                 </HBox>
             </VBox>
 

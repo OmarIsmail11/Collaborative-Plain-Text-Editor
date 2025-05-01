@@ -10,11 +10,8 @@ import java.net.URL;
 
 import java.io.IOException;
 
-/**
- * JavaFX App
- */
-
- public class App extends Application {
+/// JavaFX App
+public class App extends Application {
     @Override
     public void start(Stage stage) throws IOException {
         // Load the homepage (home.fxml)

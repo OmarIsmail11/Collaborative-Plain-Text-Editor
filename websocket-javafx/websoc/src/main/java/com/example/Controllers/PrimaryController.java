@@ -56,6 +56,10 @@ public class PrimaryController {
     @FXML
     private Label currentUserLabel;
 
+    public void setCurrentUserLabel(Label currentUserLabel) {
+        this.currentUserLabel.setText("hussein");
+    }
+
     @FXML
     private Label crabUserLabel;
 

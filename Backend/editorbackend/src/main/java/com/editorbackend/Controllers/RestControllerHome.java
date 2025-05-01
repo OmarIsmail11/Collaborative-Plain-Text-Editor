@@ -38,7 +38,7 @@ public class RestControllerHome {
 
     @PostMapping("/create")
     public ResponseEntity<Document> createDocument(@RequestBody CreateDocumentRequest request) {
-        Document newDoc = documentRegistry.createDocument(request.getName());
+        Document newDoc = documentRegistry.createDocument(request.getName(), request.getAuthor());
         return ResponseEntity.ok(newDoc);
     }
 }

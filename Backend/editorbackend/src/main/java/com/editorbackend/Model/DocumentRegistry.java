@@ -3,28 +3,44 @@ package com.editorbackend.Model;
 import com.editorbackend.CRDT.CRDTTree;
 import com.editorbackend.CRDT.User;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.UUID;
 
 @Service
 public class DocumentRegistry {
+    private static final String filePath = "editorbackend/data/documents.json";  // Ensure "Database" directory exists
     private Map<String, Document> documents = new HashMap<>();
     private Map<String, CRDTTree> crdtTrees = new HashMap<>();
     private Map<String, Map<String, User>> sessionUsers = new HashMap<>();
+    private ObjectMapper objectMapper;
 
-    public Document createDocument(String docName) {
-        Document doc = new Document(docName);
+    public DocumentRegistry() {
+        objectMapper = new ObjectMapper();
+        loadDocuments();
+    }
+
+    // docID is a combination of docName and userName separated by -
+    public Document createDocument(String docName, String userName) {
+        Document doc = new Document(docName, userName);
         doc.setViewerCode(generateCode("VIEW"));
         doc.setEditorCode(generateCode("EDIT"));
-        doc.setText("");
+        doc.setText(""); // Set empty text initially
 
-        documents.put(doc.getDocName(), doc);
+        // Save the document and CRDT trees for editing/viewing codes
+        documents.put(doc.getDocID(), doc);
         crdtTrees.put(doc.getViewerCode(), new CRDTTree());
         crdtTrees.put(doc.getEditorCode(), crdtTrees.get(doc.getViewerCode()));
         sessionUsers.put(doc.getViewerCode(), new HashMap<>());
         sessionUsers.put(doc.getEditorCode(), sessionUsers.get(doc.getViewerCode()));
+
+        // Save documents to file
+        saveDocuments();
         return doc;
     }
 
@@ -59,6 +75,37 @@ public class DocumentRegistry {
                 doc.setText(text);
                 break;
             }
+        }
+    }
+
+    public void saveDocuments() {
+        try {
+            // Ensure the directory exists
+            File dir = new File("Database");
+            if (!dir.exists()) {
+                dir.mkdirs();  // Create the directory if it doesn't exist
+            }
+
+            // Save the documents map to the file
+            objectMapper.writeValue(new File(filePath), documents);
+            System.out.println("Documents saved successfully.");
+        } catch (IOException e) {
+            System.err.println("Error saving documents: " + e.getMessage());
+        }
+    }
+
+    public void loadDocuments() {
+        try {
+            File file = new File(filePath);
+            if (file.exists()) {
+                // Load the documents map from the file
+                documents = objectMapper.readValue(file, objectMapper.getTypeFactory().constructMapType(HashMap.class, String.class, Document.class));
+                System.out.println("Documents loaded successfully.");
+            } else {
+                System.out.println("No existing documents found, starting fresh.");
+            }
+        } catch (IOException e) {
+            System.err.println("Error loading documents: " + e.getMessage());
         }
     }
 }

@@ -2,10 +2,14 @@ package com.example.Controllers;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Optional;
 import java.io.IOException;
 import com.example.Service.routeToController;
@@ -48,7 +52,7 @@ public class HomeController {
             String username = dialogController.getUsername();
             if (!name.trim().isEmpty() && !username.trim().isEmpty()) {
                 try {
-                    Document newDoc = routeToController.createNewDocument(name, username);
+                    Document newDoc = routeToController.createNewDocument(name, username, "");
 
                     if (newDoc == null) {
                         System.err.println("Failed to create document");
@@ -56,7 +60,7 @@ public class HomeController {
                     }
 
                     loadEditorPage(false, newDoc.getDocName(), username, newDoc.getDocID(),
-                            newDoc.getViewerCode(), newDoc.getEditorCode());
+                            newDoc.getViewerCode(), newDoc.getEditorCode(), "");
                 } catch (IOException e) {
                     showError("Error creating document", e.getMessage());
                 }
@@ -68,7 +72,57 @@ public class HomeController {
 
     @FXML
     private void handleBrowse() {
-        System.out.println("Browse button clicked");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        File file = fileChooser.showOpenDialog(null);
+
+        if (file != null) {
+            try {
+                String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+
+                FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/new_document_dialog.fxml"));
+                DialogPane dialogPane = fxmlLoader.load();
+
+                NewDocumentDialogController dialogController = fxmlLoader.getController();
+
+                Dialog<String> dialog = new Dialog<>();
+                dialog.setTitle("Create New Document");
+                dialog.setDialogPane(dialogPane);
+
+                dialog.setResultConverter(buttonType -> {
+                    dialogController.processResult(buttonType);
+                    return dialogController.getDocumentName();
+                });
+
+                Optional<String> result = dialog.showAndWait();
+                result.ifPresent(name -> {
+                    String username = dialogController.getUsername();
+                    if (!name.trim().isEmpty() && !username.trim().isEmpty()) {
+                        try {
+                            Document newDoc = routeToController.createNewDocument(name, username, content);
+
+                            if (newDoc == null) {
+                                System.err.println("Failed to create document");
+                                return;
+                            }
+
+                            loadEditorPage(false, newDoc.getDocName(), username, newDoc.getDocID(),
+                                    newDoc.getViewerCode(), newDoc.getEditorCode(), content);
+                        } catch (IOException e) {
+                            showError("Error creating document", e.getMessage());
+                        }
+                    } else {
+                        showError("Invalid Input", "Please enter both a document name and a username.");
+                    }
+                });
+
+                System.out.println("File loaded successfully.");
+            } catch (IOException e) {
+                showError("Error", "Failed to load the file: " + e.getMessage());
+            }
+        } else {
+            System.out.println("No file selected.");
+        }
     }
 
     @FXML
@@ -91,8 +145,9 @@ public class HomeController {
             if (!username.trim().isEmpty()) {
                 try {
                     boolean isEditor = sessionCode.equals(doc.getEditorCode());
+                    System.out.printf("Printing: " + doc.getDocText() + "\n");
                     loadEditorPage(!isEditor, doc.getDocName(), username, doc.getDocID(),
-                            doc.getViewerCode(), doc.getEditorCode());
+                            doc.getViewerCode(), doc.getEditorCode(), doc.getDocText());
                 } catch (IOException e) {
                     showError("Error joining document", e.getMessage());
                 }
@@ -103,7 +158,7 @@ public class HomeController {
     }
 
     private void loadEditorPage(boolean readOnly, String documentName, String username,
-                                String docID, String viewerCode, String editorCode) throws IOException {
+                                String docID, String viewerCode, String editorCode, String content) throws IOException {
         FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("/editor.fxml"));
         Scene editorScene = new Scene(fxmlLoader.load(), 800, 500);
 
@@ -111,6 +166,7 @@ public class HomeController {
         controller.setReadOnly(readOnly);
         controller.InitializeDocContents(docID, documentName, username, viewerCode, editorCode);
         setupTextChangeListener(controller);
+        controller.setTextArea(content);
 
         Stage stage = (Stage) newDocButton.getScene().getWindow();
         stage.setScene(editorScene);

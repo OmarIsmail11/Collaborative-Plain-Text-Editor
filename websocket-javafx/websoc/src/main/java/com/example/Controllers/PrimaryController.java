@@ -11,6 +11,10 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,6 +23,8 @@ import java.util.function.Consumer;
 
 import com.example.config.WebSocketConfig;
 import com.example.Service.routeToController;
+import javafx.stage.FileChooser;
+
 import javax.swing.*;
 
 public class PrimaryController {
@@ -45,7 +51,7 @@ public class PrimaryController {
     private Button redoButton;
 
     @FXML
-    private Button exportButton;
+    private Button saveButton;
 
     @FXML
     private Button addCommentButton;
@@ -339,13 +345,39 @@ public class PrimaryController {
     }
 
     @FXML
-    private void exportAction() {
-        System.out.println("Export action triggered");
+    private void saveAction() {
+        System.out.println("Save action triggered");
         String text = textEditor.getText();
         System.out.println("THIS IS TEXT: " + text);
         routeToController.saveDocument(this.DocID,text);
 
     }
+
+    @FXML
+    private void loadAction() {
+        // Open a file chooser dialog to select a text file
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Text Files", "*.txt"));
+        File file = fileChooser.showOpenDialog(null);
+
+        if (file != null) {
+            try {
+                // Read the file content as a string
+                String content = new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
+
+                // Set the content of the textEditor (TextArea) to the file's content
+                textEditor.setText(content);
+
+                System.out.println("File loaded successfully.");
+            } catch (IOException e) {
+                // Show an error message if the file couldn't be read
+                showError("Error", "Failed to load the file: " + e.getMessage());
+            }
+        } else {
+            System.out.println("No file selected.");
+        }
+    }
+
 
     public int getCursorPosition() {
         if (textEditor == null) {
@@ -478,5 +510,10 @@ public class PrimaryController {
         this.viewerCodeLabel.setText(Viewer_Code);
         this.editorCodeLabel.setText(Editor_Code);
 
+    }
+
+    public void setTextArea(String text)
+    {
+        textEditor.setText(text);
     }
 }

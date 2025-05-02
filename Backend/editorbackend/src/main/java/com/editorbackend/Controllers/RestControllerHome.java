@@ -20,11 +20,15 @@ public class RestControllerHome {
     public static class CreateDocumentRequest {
         private String name;
         private String author;
+        private String text;
+
 
         public String getName() { return name; }
         public void setName(String name) { this.name = name; }
         public String getAuthor() { return author; }
         public void setAuthor(String author) { this.author = author; }
+        public String getText() { return text; }
+        public void setText(String text) { this.text = text; }
     }
 
     public static class UpdateDocumentRequest {
@@ -47,7 +51,7 @@ public class RestControllerHome {
 
     @PostMapping("/create")
     public ResponseEntity<Document> createDocument(@RequestBody CreateDocumentRequest request) {
-        Document newDoc = documentRegistry.createDocument(request.getName(), request.getAuthor());
+        Document newDoc = documentRegistry.createDocument(request.getName(), request.getAuthor(), request.getText());
         return ResponseEntity.ok(newDoc);
     }
 

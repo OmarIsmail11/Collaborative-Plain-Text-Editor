@@ -64,7 +64,8 @@
         <HBox spacing="5" style="-fx-padding: 5; -fx-background-color: #e0e0e0;">
             <Button text="Undo" fx:id="undoButton" onAction="#undoAction"/>
             <Button text="Redo" fx:id="redoButton" onAction="#redoAction"/>
-            <Button text="Export" fx:id="exportButton" onAction="#exportAction"/>
+            <Button text="Save" fx:id="saveButton" onAction="#saveAction"/>
+            <Button text="Load" fx:id="loadButton" onAction="#loadAction"/>
             <Button text="Add Comment" fx:id="addCommentButton" onAction="#addComment"/>
         </HBox>
     </top>

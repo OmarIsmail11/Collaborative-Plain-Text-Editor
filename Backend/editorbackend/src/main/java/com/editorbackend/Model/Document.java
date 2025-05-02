@@ -17,10 +17,21 @@ public class Document {
     private String sessionCode;
 
     @JsonCreator
-    public Document(@JsonProperty("docName") String docName, @JsonProperty("userName") String userName)
+    public Document(@JsonProperty("docName") String docName, @JsonProperty("userName") String userName, @JsonProperty("text") String text)
     {
+        this.docID = docName + "-" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
         this.DocName = docName;
         this.userName = userName;
-        this.docID = docName + "-" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
+    }
+
+//    public Document(String docName, String userName, String text)
+//    {
+//        this.docID = docName + "-" + userName + UUID.randomUUID().toString().substring(0, 3).toUpperCase();
+//        this.DocName = docName;
+//        this.userName = userName;
+//        this.text = text;
+//    }
+
+    public Document() {
     }
 }

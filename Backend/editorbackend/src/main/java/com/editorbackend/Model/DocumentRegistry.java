@@ -14,7 +14,7 @@ import java.util.UUID;
 
 @Service
 public class DocumentRegistry {
-    private static final String filePath = "data/documents.json";  // Ensure "Database" directory exists
+    private static final String filePath = "editorbackend/data/documents.json";  // Ensure "Database" directory exists
     private Map<String, Document> documents = new HashMap<>();
     private Map<String, CRDTTree> crdtTrees = new HashMap<>();
     private Map<String, Map<String, User>> sessionUsers = new HashMap<>();
@@ -26,11 +26,11 @@ public class DocumentRegistry {
     }
 
     // docID is a combination of docName and userName separated by -
-    public Document createDocument(String docName, String userName) {
-        Document doc = new Document(docName, userName);
+    public Document createDocument(String docName, String userName, String text) {
+        Document doc = new Document(docName, userName, text);
         doc.setViewerCode(generateCode("VIEW"));
         doc.setEditorCode(generateCode("EDIT"));
-        doc.setText(""); // Set empty text initially
+        doc.setText(text); // Set empty text initially
 
         // Save the document and CRDT trees for editing/viewing codes
         documents.put(doc.getDocID(), doc);
@@ -90,12 +90,6 @@ public class DocumentRegistry {
 
     public void saveDocuments() {
         try {
-            // Ensure the directory exists
-            File dir = new File("Database");
-            if (!dir.exists()) {
-                dir.mkdirs();  // Create the directory if it doesn't exist
-            }
-
             // Save the documents map to the file
             objectMapper.writeValue(new File(filePath), documents);
             System.out.println("Documents saved successfully.");

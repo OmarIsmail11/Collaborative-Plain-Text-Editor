@@ -1,4 +1,4 @@
-package com.editorbackend.CRDT;
+package com.example.Model;
 
 
 import org.springframework.stereotype.Service;
@@ -32,7 +32,7 @@ public class CRDTTree {
         visibleNodes.clear();
         dfsBuildText(root);
         dfsBuildVisibleNodes(root);
-//
+// 
         CRDTNode parent;
         int insertionIndex;
 
@@ -127,8 +127,8 @@ public class CRDTTree {
     private void printTree(CRDTNode node, String prefix, boolean isLast) {
         if (node != root) {
             System.out.println(prefix + (isLast ? "└── " : "├── ") +
-                    (node.isDeleted() ? "(" + node.getValue() + ", idx=" + node.getIndex() + ", " + node.getTimestamp() + ")"
-                            : node.getValue() + ", idx=" + node.getIndex() + ", " + node.getTimestamp()));
+                (node.isDeleted() ? "(" + node.getValue() + ", idx=" + node.getIndex() + ", " + node.getTimestamp() + ")"
+                                  : node.getValue() + ", idx=" + node.getIndex() + ", " + node.getTimestamp()));
             prefix += isLast ? "    " : "│   ";
         }
         List<CRDTNode> children = node.getNextNodes();

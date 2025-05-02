@@ -21,13 +21,14 @@ public class CRDTService {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
-    public CRDTNode insert(String code, String userId, char value, int index, LocalDateTime timestamp) {
+    public CRDTNode insert(String code, String userId,CRDTNode newNode) {
         CRDTTree tree = documentRegistry.getCRDTTree(code);
         Map<String, User> users = documentRegistry.getUsers(code);
         if (tree == null) return null;
 
         User user = users.computeIfAbsent(userId, k -> new User(userId));
         CRDTNode node = tree.insert(value, index, timestamp, userId);
+        CRDTNode node = tree.insert(newNode)
         user.addToUndoStack("insert", node, index);
 
 

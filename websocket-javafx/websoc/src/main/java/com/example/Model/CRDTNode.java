@@ -1,6 +1,8 @@
 package com.example.Model;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -10,14 +12,15 @@ import java.util.*;
 public class CRDTNode {
     private String id;
     private char value;
-    private LocalDateTime timestamp;
+    private String timestamp;
     private boolean isDeleted;
+    @JsonIgnore
     private CRDTNode parent;
     private List<CRDTNode> nextNodes;
     private String UserID;
     private int index;
 
-    public CRDTNode(String id, char value, LocalDateTime timestamp, boolean isDeleted, CRDTNode parent, String UserID, int index) {
+    public CRDTNode(String id, char value, String timestamp, boolean isDeleted, CRDTNode parent, String UserID, int index) {
         this.id = id;
         this.value = value;
         this.timestamp = timestamp;
@@ -33,8 +36,8 @@ public class CRDTNode {
     public void setId(String id) { this.id = id; }
     public char getValue() { return value; }
     public void setValue(char value) { this.value = value; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public String getTimestamp() { return timestamp; }
+    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
     public boolean isDeleted() { return isDeleted; }
     public void setDeleted(boolean deleted) { isDeleted = deleted; }
     public CRDTNode getParent() { return parent; }

@@ -10,6 +10,5 @@ com\example\config\WebSocketConfig$MyStompSessionHandler.class
 com\example\Service\routeToController$UpdateDocumentRequest.class
 com\example\Service\routeToController$CreateDocumentRequest.class
 com\example\Model\CRDTNode.class
-com\example\Controllers\PrimaryController$Comment.class
 com\example\Model\Operation.class
 com\example\Service\routeToController.class

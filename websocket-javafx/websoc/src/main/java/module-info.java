@@ -8,9 +8,10 @@ module com.example {
     requires spring.context;
 
     // Additional modules
-    requires com.fasterxml.jackson.databind;
     requires spring.messaging;
     requires spring.websocket;
+    requires com.fasterxml.jackson.datatype.jsr310;
+    requires com.fasterxml.jackson.databind;
     requires java.desktop;
 
     // Open the package for reflection (used by JavaFX and Spring Boot)

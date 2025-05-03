@@ -23,6 +23,7 @@ public class CRDTNode {
     }
 
     public CRDTNode(char value, String timestamp, String UserID, int index) {
+        this.id = UserID+"_"+timestamp;
         this.value = value;
         this.timestamp = timestamp;
         this.nextNodes = new ArrayList<>();

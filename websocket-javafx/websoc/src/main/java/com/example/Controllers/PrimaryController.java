@@ -168,6 +168,7 @@ public class PrimaryController {
                 crdtTree.delete(caretPos, currentUser.getUserID());
                 currentUser.addToUndoStack("delete", delNode, caretPos);
                 currentUser.printUndoStack();
+                delNode.setUserID(this.currentUser.getUserID());
                 Operation operation = new Operation("delete", delNode, caretPos);
                 WebSocketConfig webSocketConfig = new WebSocketConfig();
                 webSocketClient.sendOperation(sessionCode, operation);
@@ -269,6 +270,7 @@ public class PrimaryController {
             } else if ("delete".equals(operation.getType())) {
                 int position = operation.getIndex();
                 this.crdtTree.delete(position, operation.getNode().getUserID());
+                this.crdtTree.printCRDTTree();
             }
 
             // Update the UI with the new CRDT state

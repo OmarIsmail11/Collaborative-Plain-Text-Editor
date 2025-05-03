@@ -33,6 +33,9 @@ public class webSocketController {
             if(operation.getType().equals("insert")){
                 service.insert(sessionCode, operation.getNode().getUserID(), operation.getNode());
             }
+            if(operation.getType().equals("delete")){
+                service.delete(sessionCode,operation.getNode().getUserID(),operation.getIndex());
+            }
             System.out.println("Broadcasting operation received operation from pollId: " + sessionCode);
             return operation;
     }

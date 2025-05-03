@@ -1,6 +1,5 @@
 package com.editorbackend.CRDT;
 
-
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -27,26 +26,26 @@ public class CRDTTree {
         visibleNodes.add(visibleRoot);
     }
 
-    public CRDTNode insert(char value, int index, LocalDateTime timestamp, String userID) {
+    public CRDTNode insert(CRDTNode node) {
         visibleText.clear();
         visibleNodes.clear();
         dfsBuildText(root);
         dfsBuildVisibleNodes(root);
-
+//
         CRDTNode parent;
         int insertionIndex;
 
-        if (index <= 0) {
+        if (node.getIndex() <= 0) {
             parent = root;
             insertionIndex = 0;
-        } else if (index > visibleNodes.size()) {
-            while (visibleNodes.size() < index) {
+        } else if (node.getIndex() > visibleNodes.size()) {
+            while (visibleNodes.size() < node.getIndex()) {
                 CRDTNode lastNode = visibleNodes.isEmpty() ? root : visibleNodes.get(visibleNodes.size() - 1);
                 parent = lastNode.getParent() == null ? root : lastNode.getParent();
                 insertionIndex = lastNode.getIndex() + 1;
 
-                String dummyNodeId = userID + "_DUMMY_" + visibleNodes.size();
-                CRDTNode dummyNode = new CRDTNode(dummyNodeId, ' ', LocalDateTime.now().toString(), false, parent, userID, insertionIndex);
+                String dummyNodeId = node.getUserID()+ "_DUMMY_" + visibleNodes.size();
+                CRDTNode dummyNode = new CRDTNode(dummyNodeId, ' ', LocalDateTime.now().toString(), false, parent, node.getUserID(), insertionIndex);
                 parent.getNextNodes().add(dummyNode);
                 nodeList.add(dummyNode);
                 visibleNodes.add(dummyNode);
@@ -58,23 +57,21 @@ public class CRDTTree {
             parent = visibleNodes.get(visibleNodes.size() - 1).getParent();
             insertionIndex = visibleNodes.get(visibleNodes.size() - 1).getIndex() + 1;
         } else {
-            CRDTNode targetNode = visibleNodes.get(index - 1);
+
+            CRDTNode targetNode = visibleNodes.get(node.getIndex() - 1);
             parent = targetNode.getParent();
             insertionIndex = targetNode.getIndex() + 1;
         }
 
-        String formattedTimestamp = timestamp.format(formatter);
-        String nodeId = userID + "_" + formattedTimestamp;
-
-        CRDTNode newNode = new CRDTNode(nodeId, value, timestamp.toString(), false, parent, userID, insertionIndex);
-        parent.getNextNodes().add(insertionIndex, newNode);
-        nodeList.add(newNode);
+        node.setParent(parent);
+        parent.getNextNodes().add(insertionIndex, node);
+        nodeList.add(node);
 
         for (int i = 0; i < parent.getNextNodes().size(); i++) {
             parent.getNextNodes().get(i).setIndex(i);
         }
 
-        return newNode;
+        return node;
     }
 
     public void delete(int index, String userID) {

@@ -30,7 +30,7 @@ public class CRDTService {
 
         String timestampStr = newNode.getTimestamp();
         LocalDateTime nodeTimestamp = LocalDateTime.parse(timestampStr);
-        CRDTNode node = tree.insert(newNode.getValue(), newNode.getIndex(), nodeTimestamp, newNode.getUserID());
+        CRDTNode node = tree.insert(newNode);
         user.addToUndoStack("insert", node, newNode.getIndex());
 
 

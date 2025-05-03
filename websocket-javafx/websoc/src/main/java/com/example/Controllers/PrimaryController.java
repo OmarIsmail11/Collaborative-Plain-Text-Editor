@@ -202,7 +202,8 @@ public class PrimaryController {
         // Insert the character at the current caret position
         for (int i = 0; i < character.length(); i++) {
             char ch = character.charAt(i);
-            CRDTNode node = crdtTree.insert(ch, caretPos + i, LocalDateTime.now(), currentUser.getUserID());
+            CRDTNode newNode = new CRDTNode(ch,LocalDateTime.now().toString(),currentUser.getUserID(),caretPos + i);
+            CRDTNode node = crdtTree.insert(newNode);
             currentUser.addToUndoStack("insert", node, caretPos + i);
             Operation operation = new Operation("insert", node, caretPos + i);
 
@@ -264,7 +265,7 @@ public class PrimaryController {
             if ("insert".equals(operation.getType())) {
                 CRDTNode node = operation.getNode();
                 int position = operation.getIndex();
-                this.crdtTree.insert(node.getValue(), node.getIndex(), LocalDateTime.now(),currentUser.getUserID());
+                this.crdtTree.insert(node);
             } else if ("delete".equals(operation.getType())) {
                 int position = operation.getIndex();
                 this.crdtTree.delete(position, operation.getNode().getUserID());

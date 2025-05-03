@@ -13,6 +13,7 @@ module com.example {
     requires com.fasterxml.jackson.datatype.jsr310;
     requires com.fasterxml.jackson.databind;
     requires java.desktop;
+    requires spring.beans;
 
     // Open the package for reflection (used by JavaFX and Spring Boot)
     opens com.example.Controllers to javafx.fxml;

@@ -27,9 +27,11 @@ public class CRDTService {
         if (tree == null) return null;
 
         User user = users.computeIfAbsent(userId, k -> new User(userId));
-        CRDTNode node = tree.insert(value, index, timestamp, userId);
-        CRDTNode node = tree.insert(newNode)
-        user.addToUndoStack("insert", node, index);
+
+        String timestampStr = newNode.getTimestamp();
+        LocalDateTime nodeTimestamp = LocalDateTime.parse(timestampStr);
+        CRDTNode node = tree.insert(newNode.getValue(), newNode.getIndex(), nodeTimestamp, newNode.getUserID());
+        user.addToUndoStack("insert", node, newNode.getIndex());
 
 
         StringBuilder sb = new StringBuilder();

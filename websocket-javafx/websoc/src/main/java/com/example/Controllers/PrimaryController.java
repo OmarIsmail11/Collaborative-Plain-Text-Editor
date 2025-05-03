@@ -31,9 +31,11 @@ import java.util.function.Consumer;
 import com.example.config.WebSocketConfig;
 import com.example.Service.routeToController;
 import javafx.stage.FileChooser;
+import org.springframework.stereotype.Controller;
 
 import javax.swing.*;
 
+@Controller
 public class PrimaryController {
 
     @FXML
@@ -120,31 +122,6 @@ public class PrimaryController {
         System.out.println("Editor initialized. Read-only: " + isReadOnly);
         printInitializationStatus();
 
-        try {
-            // Use a Consumer that adds to the operationBuffer and processes it
-            Consumer<Operation> operationHandler = operation -> {
-                operationBuffer.add(operation);
-
-            };// Create the WebSocket config
-
-
-
-            webSocketClient.setTextUpdateCallback(textContent -> {
-
-                textEditor.setText(textContent);
-
-            });
-
-            webSocketClient.connect(editorCodeLabel.getText());
-
-        } catch (RuntimeException e) {
-            System.err.println("Failed to initialize WebSocket: " + e.getMessage());
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Connection Error");
-            alert.setHeaderText("Failed to connect to WebSocket server");
-            alert.setContentText("Please ensure the server is running and try again.");
-            alert.showAndWait();
-        }
     }
 
     // Debug method to check if UI elements are properly initialized
@@ -283,13 +260,14 @@ public class PrimaryController {
         Platform.runLater(() -> {
             isUpdating = true;
 
+            System.out.println("Received operation from server: " + operation.getType());
             if ("insert".equals(operation.getType())) {
                 CRDTNode node = operation.getNode();
                 int position = operation.getIndex();
-                crdtTree.insert(node.getValue(), node.getIndex(), LocalDateTime.now(),currentUser.getUserID());
+                this.crdtTree.insert(node.getValue(), node.getIndex(), LocalDateTime.now(),currentUser.getUserID());
             } else if ("delete".equals(operation.getType())) {
                 int position = operation.getIndex();
-                crdtTree.delete(position, operation.getUserID());
+                this.crdtTree.delete(position, operation.getNode().getUserID());
             }
 
             // Update the UI with the new CRDT state
@@ -520,7 +498,33 @@ public class PrimaryController {
         this.editorCodeLabel.setText(Editor_Code);
         this.currentUser = new User(CurrentUserName);
 
-        sessionCode = Editor_Code;
+        this.sessionCode = Editor_Code;
+
+        try {
+            // Use a Consumer that adds to the operationBuffer and processes it
+            Consumer<Operation> operationHandler = operation -> {
+                operationBuffer.add(operation);
+
+            };// Create the WebSocket config
+
+
+
+            this.webSocketClient.setTextUpdateCallback(textContent -> {
+
+                textEditor.setText(textContent);
+
+            });
+
+            this.webSocketClient.connect(this.sessionCode);
+
+        } catch (RuntimeException e) {
+            System.err.println("Failed to initialize WebSocket: " + e.getMessage());
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+            alert.setTitle("Connection Error");
+            alert.setHeaderText("Failed to connect to WebSocket server");
+            alert.setContentText("Please ensure the server is running and try again.");
+            alert.showAndWait();
+        }
 
     }
 

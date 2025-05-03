@@ -7,10 +7,12 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 
+import com.example.Controllers.PrimaryController;
 import com.example.Model.Operation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -19,6 +21,7 @@ import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandler;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import org.springframework.web.socket.sockjs.client.SockJsClient;
@@ -27,9 +30,13 @@ import org.springframework.messaging.converter.CompositeMessageConverter;
 import org.springframework.messaging.converter.MessageConverter;
 import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 
+@Component
 public class WebSocketConfig {
     private StompSession stompSession;
     private Consumer<String> textUpdateCallback;
+
+    @Autowired
+    public PrimaryController primaryController;
 
     public WebSocketConfig() {
         // Default constructor
@@ -92,17 +99,24 @@ public class WebSocketConfig {
             stompSession.subscribe(topic, new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {
-                    return String.class;
+                    return Object.class;
                 }
+
 
                 @Override
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    if (payload instanceof String) {
+                    if (payload instanceof String) { // This will be used when first joining session to retreive all text not by operation operation
                         String textContent = (String) payload;
                         System.out.println("Received text content from server: " + textContent);
                         if (textUpdateCallback != null) {
                             textUpdateCallback.accept(textContent);
                         }
+                    }
+                    else if (payload instanceof Operation)
+                    {
+                        Operation operation = (Operation) payload;
+                        System.out.println("Received operation from server: " + operation.getType());
+                        primaryController.handleRemoteOperation(operation);
                     }
                 }
             });

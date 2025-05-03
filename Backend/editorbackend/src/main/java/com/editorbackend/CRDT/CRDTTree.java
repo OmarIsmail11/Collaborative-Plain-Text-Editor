@@ -32,7 +32,7 @@ public class CRDTTree {
         visibleNodes.clear();
         dfsBuildText(root);
         dfsBuildVisibleNodes(root);
-//
+
         CRDTNode parent;
         int insertionIndex;
 

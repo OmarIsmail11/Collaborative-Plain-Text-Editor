@@ -27,13 +27,14 @@ public class webSocketController {
 
 
     @MessageMapping("/operation/{sessionCode}")
-    @SendTo("/app/session/{sessionCode}")
-    public String OperationReceived(@DestinationVariable String sessionCode, @Payload Operation operation) {
-            System.out.println("A7aaaaaaaaaaaaaaa");
+    @SendTo("/topic/session/{sessionCode}")
+    public Operation broadcastReceivedOperation(@DestinationVariable String sessionCode, @Payload Operation operation) {
+            System.out.println("Recieved operation from pollId: " + sessionCode);
             if(operation.getType().equals("insert")){
-                service.insert(operation.getNode());
+                service.insert(sessionCode, operation.getNode().getUserID(), operation.getNode());
             }
-            return service.getState(sessionCode);
+            System.out.println("Broadcasting operation received operation from pollId: " + sessionCode);
+            return operation;
     }
 
 

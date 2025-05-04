@@ -22,16 +22,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import com.example.config.WebSocketConfig;
 import com.example.Service.routeToController;
 import javafx.stage.FileChooser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import java.util.concurrent.ExecutorService;
 
@@ -96,10 +94,14 @@ public class PrimaryController {
     private String DocID;
     public CRDTTree  crdtTree = new CRDTTree();
     public User currentUser;
-    public WebSocketConfig webSocketClient = new WebSocketConfig();
-    private boolean isUpdating = false;
+    @Autowired
+    public WebSocketConfig webSocketClient;
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
     private final Object crdtLock = new Object();
+    private Set<String> localOperationIds = new HashSet<>();
+    private volatile boolean isUpdating = false;
+    private final Object uiUpdateLock = new Object();
+    private int lastCaretPos = 0;
 
 
     @FXML
@@ -117,11 +119,24 @@ public class PrimaryController {
         if (penguinUserLabel != null) availableUserLabels.add(penguinUserLabel);
 
         // Add key event handlers for real-time character insertion tracking
-        textEditor.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
+        textEditor.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyPressed);
         textEditor.addEventHandler(KeyEvent.KEY_TYPED, this::handleKeyTyped);
 
+        textEditor.addEventHandler(KeyEvent.KEY_RELEASED, event -> {
+            if (event.isControlDown() && event.getCode() == KeyCode.Z) {
+                undoAction();
+                event.consume();
+            }
+        });
 
+        textEditor.addEventHandler(KeyEvent.KEY_RELEASED, event -> {
+            if (event.isControlDown() && event.isShiftDown() && event.getCode() == KeyCode.Z) {
+                redoAction(); // Call your redo method here
+                event.consume(); // Prevent further propagation of this key event
+            }
+        });
 
+        Platform.runLater(() -> textEditor.requestFocus());
 
         // Debug: Print initial state and check if UI elements are properly initialized
         System.out.println("Editor initialized. Read-only: " + isReadOnly);
@@ -145,12 +160,16 @@ public class PrimaryController {
             if (caretPos > 0 && caretPos <= crdtTree.visibleNodes.size()) {
                 int deletePos = caretPos - 1;
                 CRDTNode delNode;
-                synchronized (crdtLock) { // Synchronize CRDT access
+                synchronized (crdtLock) {
                     delNode = crdtTree.visibleNodes.get(deletePos);
                     crdtTree.delete(deletePos, currentUser.getUserID());
                     currentUser.addToUndoStack("delete", delNode, deletePos);
                 }
+
+                String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
+                localOperationIds.add(operationId);
                 Operation operation = new Operation("delete", delNode, deletePos);
+                operation.setId(operationId);
 
                 executorService.submit(() -> {
                     try {
@@ -161,25 +180,23 @@ public class PrimaryController {
                     }
                 });
 
-                System.out.println("Backspace pressed - Deleted at position: " + deletePos);
-                crdtTree.printCRDTTree();
-                crdtTree.printText();
-
-                int newCaretPos = deletePos;
-                updateTextEditorContent(newCaretPos);
+                updateTextEditorContent(deletePos);
                 event.consume();
             }
         } else if (event.getCode() == KeyCode.DELETE) {
             int caretPos = textEditor.getCaretPosition();
             if (caretPos < crdtTree.visibleNodes.size()) {
                 CRDTNode delNode;
-                synchronized (crdtLock) { // Synchronize CRDT access
+                synchronized (crdtLock) {
                     delNode = crdtTree.visibleNodes.get(caretPos);
                     crdtTree.delete(caretPos, currentUser.getUserID());
                     currentUser.addToUndoStack("delete", delNode, caretPos);
-                    delNode.setUserID(currentUser.getUserID());
                 }
+
+                String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
+                localOperationIds.add(operationId);
                 Operation operation = new Operation("delete", delNode, caretPos);
+                operation.setId(operationId);
 
                 executorService.submit(() -> {
                     try {
@@ -190,17 +207,11 @@ public class PrimaryController {
                     }
                 });
 
-                System.out.println("Delete pressed - Deleted at position: " + caretPos);
-                crdtTree.printCRDTTree();
-                crdtTree.printText();
-
-                int newCaretPos = caretPos;
-                updateTextEditorContent(newCaretPos);
+                updateTextEditorContent(caretPos);
                 event.consume();
             }
         }
     }
-
     private void handleKeyTyped(KeyEvent event) {
         String character = event.getCharacter();
         if (character.length() == 0 || character.codePointAt(0) < 32 ||
@@ -211,106 +222,118 @@ public class PrimaryController {
         int caretPos = textEditor.getCaretPosition();
         for (int i = 0; i < character.length(); i++) {
             char ch = character.charAt(i);
+            String nodeId = currentUser.getUserID() + "_" + LocalDateTime.now().toString();
+
+            localOperationIds.add(nodeId);
             CRDTNode newNode = new CRDTNode(
-                    currentUser.getUserID() + "_" + LocalDateTime.now().toString(),
-                    ch,
-                    LocalDateTime.now().toString(),
-                    false,
-                    null,
-                    currentUser.getUserID(),
-                    caretPos + i
+                    nodeId, ch, LocalDateTime.now().toString(), false, null, currentUser.getUserID(), caretPos + i
             );
-            CRDTNode node;
-            synchronized (crdtLock) { // Synchronize CRDT access
-                node = crdtTree.insert(newNode);
-                currentUser.addToUndoStack("insert", node, caretPos + i);
+
+            synchronized (crdtLock) {
+                crdtTree.insert(newNode);
+                currentUser.addToUndoStack("insert", newNode, caretPos + i);
             }
-            Operation operation = new Operation("insert", node, caretPos + i);
+
+            Operation operation = new Operation("insert", newNode, caretPos + i);
+            operation.setId(nodeId);
 
             executorService.submit(() -> {
                 try {
                     webSocketClient.sendOperation(sessionCode, operation);
-                    System.out.println("Sent operation: " + operation.getType() + " for node: " + node.getId());
+
                 } catch (Exception e) {
                     System.err.println("Failed to send operation: " + e.getMessage());
                 }
             });
+            System.out.println("Sent operation: insert at position: " + (caretPos + i));
 
-            System.out.println("Character typed: '" + ch + "' at position: " + (caretPos + i));
             crdtTree.printCRDTTree();
             crdtTree.printText();
         }
 
-        int newCaretPos = caretPos + character.length();
-        updateTextEditorContent(newCaretPos);
+        updateTextEditorContent(caretPos + character.length());
         event.consume();
-    }
-
-    // Method to update the text editor content based on CRDT state with specific caret position
+    } // Method to update the text editor content based on CRDT state with specific caret position
     private void updateTextEditorContent(int newCaretPos) {
-        isUpdating = true;
+        synchronized (uiUpdateLock) {
+            if (isUpdating) {
+                return; // Skip if already updating to prevent queuing multiple updates
+            }
+            isUpdating = true;
+        }
+
         try {
             StringBuilder content = new StringBuilder();
-            for (CRDTNode node : crdtTree.visibleNodes) {
-                content.append(node.getValue());
+            synchronized (crdtLock) {
+                for (CRDTNode node : crdtTree.visibleNodes) {
+                    content.append(node.getValue());
+                }
             }
 
-            // Make sure caret position is within bounds
             int safeCaretPos = Math.min(Math.max(newCaretPos, 0), content.length());
+            lastCaretPos = safeCaretPos;
 
-            // Update text - using Platform.runLater to ensure it's on the JavaFX thread
             Platform.runLater(() -> {
-                // Update text
-                textEditor.setText(content.toString());
-
-                // Set the specified caret position
-                textEditor.positionCaret(safeCaretPos);
-
-                System.out.println("UI updated. New content length: " + content.length() + ", Caret at: " + safeCaretPos);
+                synchronized (uiUpdateLock) {
+                    textEditor.setText(content.toString());
+                    textEditor.positionCaret(lastCaretPos);
+                    System.out.println("UI updated. Content length: " + content.length() + ", Caret at: " + lastCaretPos);
+                    isUpdating = false;
+                }
             });
-        } finally {
-            isUpdating = false;
+        } catch (Exception e) {
+            System.err.println("Error updating UI: " + e.getMessage());
+            synchronized (uiUpdateLock) {
+                isUpdating = false;
+            }
         }
     }
-
     // Overloaded method that uses current caret position (for backward compatibility)
     private void updateTextEditorContent() {
         int caretPos = textEditor.getCaretPosition();
         updateTextEditorContent(caretPos);
     }
 
-    // Method to handle remote operations received from WebSocket
     public void handleRemoteOperation(Operation operation) {
-        // Process CRDT operation in background thread
+        if (operation == null || operation.getId() == null) {
+            System.err.println("Received null operation or operation ID");
+            return;
+        }
+
+        if (localOperationIds.contains(operation.getId())) {
+            System.out.println("Skipping local operation echo: " + operation.getType());
+            localOperationIds.remove(operation.getId());
+            return;
+        }
+
         executorService.submit(() -> {
             try {
-                synchronized (crdtLock) { // Synchronize access to crdtTree
-                    System.out.println("Processing operation from server: " + operation.getType());
+                synchronized (crdtLock) {
+                    System.out.println("Processing remote operation: " + operation.getType());
                     if ("insert".equals(operation.getType())) {
-                        CRDTNode node = operation.getNode();
-                        int position = operation.getIndex();
-                        crdtTree.insert(node);
+                        if (operation.getNode() == null) {
+                            System.err.println("Insert operation has null node");
+                            return;
+                        }
+                        crdtTree.insert(operation.getNode());
                     } else if ("delete".equals(operation.getType())) {
-                        int position = operation.getIndex();
-                        crdtTree.delete(position, operation.getNode().getUserID());
-                        crdtTree.printCRDTTree();
+                        if (operation.getNode() == null || operation.getIndex() < 0 || operation.getIndex() >= crdtTree.visibleNodes.size()) {
+                            System.err.println("Invalid delete operation: index=" + operation.getIndex());
+                            return;
+                        }
+                        crdtTree.delete(operation.getIndex(), operation.getNode().getUserID());
+                    } else {
+                        System.err.println("Unknown operation type: " + operation.getType());
+                        return;
                     }
                 }
 
-                // Update UI on FX thread
-                Platform.runLater(() -> {
-                    isUpdating = true;
-                    updateTextEditorContent();
-                    isUpdating = false;
-                    System.out.println("UI updated after remote operation: " + operation.getType());
-                });
+                updateTextEditorContent(lastCaretPos); // Use last known caret position
             } catch (Exception e) {
                 System.err.println("Error processing remote operation: " + e.getMessage());
             }
         });
     }
-
-
     @FXML
     private void copyViewerCode() {
         if (viewerCodeLabel == null) {
@@ -348,8 +371,15 @@ public class PrimaryController {
             System.err.println("TextEditor is null in undoAction()");
             return;
         }
+        Operation op = currentUser.undo(this.crdtTree);
 
-        textEditor.undo();
+        if (op != null)
+            System.out.println("Undid " + op.getType() + " on node " + op.getNode().getId());
+        updateTextEditorContent();
+        this.crdtTree.printCRDTTree();
+        this.crdtTree.printText();
+
+//        webSocketClient.sendOperation();
         System.out.println("Undo action triggered");
     }
 
@@ -359,8 +389,12 @@ public class PrimaryController {
             System.err.println("TextEditor is null in redoAction()");
             return;
         }
-
-        textEditor.redo();
+        Operation op = currentUser.redo(this.crdtTree);
+        System.out.println("Redo " + op.getType() + " on node " + op.getNode().getId());
+        op.getNode().printNode();
+        this.crdtTree.printCRDTTree();
+        this.crdtTree.printText();
+        updateTextEditorContent();
         System.out.println("Redo action triggered");
     }
 
@@ -522,6 +556,7 @@ public class PrimaryController {
         alert.showAndWait();
     }
 
+    // Method 1: Manual Initialization in InitializeDocContents
     public void InitializeDocContents(String DocID, String DocumentName, String CurrentUserName, String Viewer_Code, String Editor_Code) {
         this.documentName = DocumentName;
         this.DocID = DocID;
@@ -530,6 +565,11 @@ public class PrimaryController {
         this.editorCodeLabel.setText(Editor_Code);
         this.currentUser = new User(CurrentUserName);
         this.sessionCode = Editor_Code;
+
+        // Initialize webSocketClient manually if it's null
+        if (this.webSocketClient == null) {
+            this.webSocketClient = new WebSocketConfig();
+        }
 
         try {
             webSocketClient.setOperationHandler(this::handleRemoteOperation);

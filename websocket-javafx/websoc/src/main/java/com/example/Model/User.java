@@ -29,6 +29,7 @@ public class User {
 
         Operation op = undoStack.pop();
         redoStack.push(op);
+
         if (op.getType().equals("insert")) op.getNode().setDeleted(true);
         else if (op.getType().equals("delete")) op.getNode().setDeleted(false);
         return op;

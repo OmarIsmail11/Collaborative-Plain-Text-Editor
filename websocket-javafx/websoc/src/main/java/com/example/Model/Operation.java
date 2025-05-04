@@ -6,6 +6,8 @@ public class Operation {
     private String type;
     private CRDTNode node;
     private int index;
+    private String id;
+    
 
     // Default constructor required for Jackson deserialization
     public Operation() {
@@ -39,5 +41,14 @@ public class Operation {
 
     public void setIndex(int index) {
         this.index = index;
+    }
+
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 }

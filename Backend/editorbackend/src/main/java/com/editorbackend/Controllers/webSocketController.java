@@ -38,7 +38,7 @@ public class webSocketController {
                 service.delete(sessionCode,operation.getNode().getUserID(),operation.getIndex());
             }
             System.out.println("Broadcasting operation received operation from ok: " + sessionCode);
-
+            operation.getNode().printNode();
             return operation;
     }
 

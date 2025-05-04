@@ -156,7 +156,35 @@ public class PrimaryController {
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        if (event.getCode() == KeyCode.BACK_SPACE) {
+        if (event.getCode() == KeyCode.ENTER) {
+            int caretPos = textEditor.getCaretPosition();
+            String nodeId = currentUser.getUserID() + "_" + LocalDateTime.now().toString();
+
+            localOperationIds.add(nodeId);
+            CRDTNode newNode = new CRDTNode(
+                    nodeId, '\n', LocalDateTime.now().toString(), false, null, currentUser.getUserID(), caretPos
+            );
+
+            synchronized (crdtLock) {
+                crdtTree.insert(newNode);
+                currentUser.addToUndoStack("insert", newNode, caretPos);
+            }
+
+            Operation operation = new Operation("insert", newNode, caretPos);
+            operation.setId(nodeId);
+
+            executorService.submit(() -> {
+                try {
+                    webSocketClient.sendOperation(sessionCode, operation);
+                    System.out.println("Sent operation: insert newline at position: " + caretPos);
+                } catch (Exception e) {
+                    System.err.println("Failed to send operation: " + e.getMessage());
+                }
+            });
+
+            updateTextEditorContent(caretPos + 1);
+            event.consume();
+        } else if (event.getCode() == KeyCode.BACK_SPACE) {
             int caretPos = textEditor.getCaretPosition();
             if (caretPos > 0 && caretPos <= crdtTree.visibleNodes.size()) {
                 int deletePos = caretPos - 1;
@@ -215,8 +243,10 @@ public class PrimaryController {
     }
     private void handleKeyTyped(KeyEvent event) {
         String character = event.getCharacter();
-        if (character.length() == 0 || character.codePointAt(0) < 32 ||
-                character.equals("\b") || character.equals("\u007F")) {
+        if (character.length() == 0 ||
+                (character.codePointAt(0) < 32 && character.codePointAt(0) != 10) || // Allow newline (10)
+                character.equals("\b") || character.equals("\u007F") ||
+                character.equals("\n")) { // Skip newline in keyTyped since we handle it in keyPressed
             return;
         }
 

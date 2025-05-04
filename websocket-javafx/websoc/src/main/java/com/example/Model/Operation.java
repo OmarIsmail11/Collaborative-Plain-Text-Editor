@@ -1,6 +1,5 @@
 package com.example.Model;
 
-import com.example.Model.CRDTNode;
 
 public class Operation {
     private String type;

@@ -54,5 +54,9 @@ public class User {
             op.getNode().printNode();
         }
     }
+
+    public Stack<Operation> getUndoStack() {
+        return this.undoStack;
+    }
 }
 

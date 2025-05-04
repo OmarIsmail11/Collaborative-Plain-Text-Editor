@@ -12,9 +12,11 @@ import com.example.Controllers.PrimaryController;
 import com.example.Model.CRDTNode;
 import com.example.Model.CRDTTree;
 import com.example.Model.Operation;
+import com.example.Model.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.converter.MappingJackson2MessageConverter;
 import org.springframework.messaging.converter.StringMessageConverter;
@@ -42,8 +44,10 @@ public class WebSocketConfig {
     private Consumer<CRDTTree> crdtTreeInitializer;
     private WebSocketStompClient stompClient;
     private Consumer<Operation> operationHandler;
+    private Consumer<Operation> undoHandler;
     private String sessionCode;
     private final Object crdtLock = new Object();
+    private Consumer<User> userManagement;
 
     // Remove @Autowired and the primaryController field
     // private PrimaryController primaryController;
@@ -54,7 +58,13 @@ public class WebSocketConfig {
     public void setOperationHandler(Consumer<Operation> handler) {
         this.operationHandler = handler;
     }
+    public void setUndoHandler(Consumer<Operation> handler) {
+        this.undoHandler = handler;
+    }
 
+    public void setUserManagement(Consumer<User> handler) {
+        this.userManagement = handler;
+    }
     public void setTextUpdateCallback(Consumer<String> callback) {
         this.textUpdateCallback = callback;
     }
@@ -84,6 +94,29 @@ public class WebSocketConfig {
         }
     }
 
+    public void getUserList() {
+        if (stompSession != null && stompSession.isConnected()) {
+            String topic = "/topic/User/" + sessionCode;
+            System.out.println("Subscribing to: " + topic + ", session connected: " + stompSession.isConnected());
+            stompSession.subscribe(topic, new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return User.class;
+                }
+
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    if (payload instanceof User) {
+                        User newUser = (User) payload;
+                        if (userManagement != null) {
+                            userManagement.accept(newUser);
+                        }
+                    }
+
+                }
+            });
+        }
+    }
+
     // 2. Subscribe to initial state topic
     public void subscribeToInitialState(String sessionCode, String UserID) {
         if (stompSession != null && stompSession.isConnected()) {
@@ -102,12 +135,6 @@ public class WebSocketConfig {
                         CRDTTree initialState = (CRDTTree) payload;
                         // Rebuild the tree from nodeList
                         initialState.rebuildFromNodeList();
-                        System.out.println("Received initial state for userID " + UserID + ": " + initialState);
-                        System.out.println("Node list: " + (initialState.getNodeList() != null ? initialState.getNodeList() : "null"));
-                        System.out.println("Visible nodes: " + (initialState.getVisibleNodes() != null ? initialState.getVisibleNodes() : "null"));
-                        System.out.println("Visible text: " + (initialState.getVisibleText() != null ? initialState.getVisibleText() : "null"));
-                        System.out.println("Root: " + (initialState.getRoot() != null ? initialState.getRoot() : "null"));
-                        System.out.println("Visible root: " + (initialState.getVisibleRoot() != null ? initialState.getVisibleRoot() : "null"));
                         if (crdtTreeInitializer != null) {
                             crdtTreeInitializer.accept(initialState);
                         }
@@ -123,7 +150,8 @@ public class WebSocketConfig {
                                 textUpdateCallback.accept(content.toString());
                             }
                         }
-                    } else {
+                    }
+                    else {
                         System.err.println("Unexpected payload type: " + (payload != null ? payload.getClass().getName() : "null"));
                     }
                 }
@@ -162,9 +190,10 @@ public class WebSocketConfig {
             stompSession = stompClient.connectAsync(url, sessionHandler).get();
 
             String topic = "/topic/session/" + sessionCode;
+            String undoTopic = "/topic/undo/" + sessionCode;
             // /topic server ---->>> subscribers
             // /app  client -->>> server
-            // /queue/topic -->>>> subscriber
+            // /queue/topic -->>>> 1 subscriber
             stompSession.subscribe(topic, new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {
@@ -177,6 +206,7 @@ public class WebSocketConfig {
                         Operation operation = (Operation) payload;
                         System.out.println("Received operation from server: " + operation.getType());
                         if (operationHandler != null) {
+                            operation.getNode().printNode();
                             operationHandler.accept(operation);
                         } else {
                             System.err.println("Operation handler is null");
@@ -187,7 +217,29 @@ public class WebSocketConfig {
                 }
             });
 
-            System.out.println("Subscribed to session: " + sessionCode);
+            stompSession.subscribe(undoTopic, new StompFrameHandler() {
+                @Override
+                public Type getPayloadType(StompHeaders headers) {
+                    return Operation.class;
+                }
+
+                @Override
+                public void handleFrame(StompHeaders headers, Object payload) {
+                    if (payload instanceof Operation) {
+                        Operation operation = (Operation) payload;
+                        System.out.println("Received undo from server: " + operation.getType());
+                        if (undoHandler != null) {
+                            undoHandler.accept(operation);
+                        } else {
+                            System.err.println("Operation handler is null");
+                        }
+                    } else {
+                        System.err.println("Unexpected payload type: " + payload.getClass().getName());
+                    }
+                    System.out.println("Subscribed to undo channel: " + sessionCode);
+                }
+            });
+
 
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
@@ -198,7 +250,6 @@ public class WebSocketConfig {
     }
 
     private void scheduleReconnect() {
-        // Try to reconnect after a delay
         new Thread(() -> {
             try {
                 Thread.sleep(5000); // Wait 5 seconds before reconnecting
@@ -212,13 +263,15 @@ public class WebSocketConfig {
 
     public void sendUndo(Operation op) {
         if (stompSession != null && stompSession.isConnected()) {
-            String destination = "/app/operation/" + sessionCode;
+            String destination = "/app/undo/" + sessionCode;
             stompSession.send(destination, op);
             System.out.println("Operation sent to: " + destination);
         } else {
             System.err.println("Cannot send operation: session is null or disconnected");
         }
     }
+
+
 
     // 7. Add a method in StompSessionHandler to handle disconnection
     private class MyStompSessionHandler extends StompSessionHandlerAdapter {

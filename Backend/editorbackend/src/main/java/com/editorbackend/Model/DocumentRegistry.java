@@ -79,7 +79,6 @@ public class DocumentRegistry {
 
         }
 
-        System.out.println("A7a kos sex");
         return crdtTrees.get(code);
     }
 

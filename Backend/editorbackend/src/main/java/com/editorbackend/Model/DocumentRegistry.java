@@ -71,8 +71,24 @@ public class DocumentRegistry {
     }
 
     public CRDTTree getCRDTTree(String code) {
+        if (!crdtTrees.containsKey(code)) {
+
+            CRDTTree newTree = new CRDTTree();
+            crdtTrees.put(code, newTree);
+            System.out.println("Initialized new CRDTTree for code: " + code);
+
+        }
+
+        System.out.println("A7a kos sex");
         return crdtTrees.get(code);
     }
+
+    public void printAllTrees() {
+        for(Map.Entry<String, CRDTTree> entry : crdtTrees.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+    }
+
 
     public Map<String, User> getUsers(String code) {
         return sessionUsers.get(code);

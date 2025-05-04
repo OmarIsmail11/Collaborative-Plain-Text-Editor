@@ -23,13 +23,14 @@ public class CRDTService {
 
     public CRDTNode insert(String code, String userId,CRDTNode newNode) {
         CRDTTree tree = documentRegistry.getCRDTTree(code);
+
         Map<String, User> users = documentRegistry.getUsers(code);
         if (tree == null) return null;
 
         User user = users.computeIfAbsent(userId, k -> new User(userId));
 
-        String timestampStr = newNode.getTimestamp();
-        LocalDateTime nodeTimestamp = LocalDateTime.parse(timestampStr);
+
+
         CRDTNode node = tree.insert(newNode);
         user.addToUndoStack("insert", node, newNode.getIndex());
 
@@ -40,12 +41,14 @@ public class CRDTService {
         }
         documentRegistry.updateDocumentText(code, sb.toString());
 
-
+        tree.printText();
+        tree.printCRDTTree();
 
         return node;
     }
 
     public void delete(String code, String userId, int index) {
+        documentRegistry.printAllTrees();
         CRDTTree tree = documentRegistry.getCRDTTree(code);
         Map<String, User> users = documentRegistry.getUsers(code);
         if (tree == null) return;

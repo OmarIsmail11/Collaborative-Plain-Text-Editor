@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import com.example.Controllers.PrimaryController;
@@ -34,15 +35,26 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 public class WebSocketConfig {
     private StompSession stompSession;
     private Consumer<String> textUpdateCallback;
+    private WebSocketStompClient stompClient;
+
+    private Consumer<Operation> operationHandler;
+
+    private String sessionCode;
+
 
     @Autowired
     public PrimaryController primaryController;
 
     public WebSocketConfig() {
-        // Default constructor
+
     }
 
-    // Set a callback that will be called with the text content when received
+
+    public void setOperationHandler(Consumer<Operation> handler) {
+        this.operationHandler = handler;
+    }
+
+
     public void setTextUpdateCallback(Consumer<String> callback) {
         this.textUpdateCallback = callback;
     }
@@ -99,25 +111,18 @@ public class WebSocketConfig {
             stompSession.subscribe(topic, new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {
-                    return Object.class;
+                    return Operation.class;
                 }
 
 
                 @Override
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    if (payload instanceof String) { // This will be used when first joining session to retreive all text not by operation operation
-                        String textContent = (String) payload;
-                        System.out.println("Received text content from server: " + textContent);
-                        if (textUpdateCallback != null) {
-                            textUpdateCallback.accept(textContent);
-                        }
-                    }
-                    else if (payload instanceof Operation)
-                    {
-                        Operation operation = (Operation) payload;
-                        System.out.println("Received operation from server: " + operation.getType());
-                        primaryController.handleRemoteOperation(operation);
-                    }
+
+
+                    Operation operation = (Operation) payload;
+                    System.out.println("Received operation from server: " + operation.getType());
+                    primaryController.handleRemoteOperation(operation);
+
                 }
             });
 

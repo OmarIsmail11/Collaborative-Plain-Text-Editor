@@ -5,13 +5,16 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class CRDTNode {
     private String id;
     private char value;
     private String timestamp;
     private boolean isDeleted;
-    @JsonIgnore
+
     private CRDTNode parent;
     private List<CRDTNode> nextNodes;
     private String UserID;

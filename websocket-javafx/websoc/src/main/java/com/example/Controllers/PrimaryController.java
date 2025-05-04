@@ -26,12 +26,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import com.example.config.WebSocketConfig;
 import com.example.Service.routeToController;
 import javafx.stage.FileChooser;
 import org.springframework.stereotype.Controller;
+import java.util.concurrent.ExecutorService;
 
 import javax.swing.*;
 
@@ -96,6 +98,9 @@ public class PrimaryController {
     public User currentUser;
     public WebSocketConfig webSocketClient = new WebSocketConfig();
     private boolean isUpdating = false;
+    private final ExecutorService executorService = Executors.newFixedThreadPool(2);
+    private final Object crdtLock = new Object();
+
 
     @FXML
     private void initialize() {
@@ -135,53 +140,61 @@ public class PrimaryController {
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        // Track deletion operations (backspace and delete keys)
         if (event.getCode() == KeyCode.BACK_SPACE) {
             int caretPos = textEditor.getCaretPosition();
             if (caretPos > 0 && caretPos <= crdtTree.visibleNodes.size()) {
-                // Delete character at position caretPos - 1 (backspace deletes character before cursor)
                 int deletePos = caretPos - 1;
-                CRDTNode delNode = crdtTree.visibleNodes.get(deletePos);
-                crdtTree.delete(deletePos, currentUser.getUserID());
-                currentUser.addToUndoStack("delete", delNode, deletePos);
+                CRDTNode delNode;
+                synchronized (crdtLock) { // Synchronize CRDT access
+                    delNode = crdtTree.visibleNodes.get(deletePos);
+                    crdtTree.delete(deletePos, currentUser.getUserID());
+                    currentUser.addToUndoStack("delete", delNode, deletePos);
+                }
                 Operation operation = new Operation("delete", delNode, deletePos);
 
-                webSocketClient.sendOperation(sessionCode, operation);
+                executorService.submit(() -> {
+                    try {
+                        webSocketClient.sendOperation(sessionCode, operation);
+                        System.out.println("Sent operation: delete at position: " + deletePos);
+                    } catch (Exception e) {
+                        System.err.println("Failed to send operation: " + e.getMessage());
+                    }
+                });
 
-                // Debug output
                 System.out.println("Backspace pressed - Deleted at position: " + deletePos);
-                this.crdtTree.printCRDTTree();
-                this.crdtTree.printText();
+                crdtTree.printCRDTTree();
+                crdtTree.printText();
 
-                // Calculate new caret position (should be at the delete position)
                 int newCaretPos = deletePos;
-
-                // We need to manually update UI and handle the event
                 updateTextEditorContent(newCaretPos);
                 event.consume();
             }
         } else if (event.getCode() == KeyCode.DELETE) {
             int caretPos = textEditor.getCaretPosition();
             if (caretPos < crdtTree.visibleNodes.size()) {
-                // Delete character at current caret position
-                CRDTNode delNode = crdtTree.visibleNodes.get(caretPos);
-                crdtTree.delete(caretPos, currentUser.getUserID());
-                currentUser.addToUndoStack("delete", delNode, caretPos);
-                currentUser.printUndoStack();
-                delNode.setUserID(this.currentUser.getUserID());
+                CRDTNode delNode;
+                synchronized (crdtLock) { // Synchronize CRDT access
+                    delNode = crdtTree.visibleNodes.get(caretPos);
+                    crdtTree.delete(caretPos, currentUser.getUserID());
+                    currentUser.addToUndoStack("delete", delNode, caretPos);
+                    delNode.setUserID(currentUser.getUserID());
+                }
                 Operation operation = new Operation("delete", delNode, caretPos);
-                WebSocketConfig webSocketConfig = new WebSocketConfig();
-                webSocketClient.sendOperation(sessionCode, operation);
 
-                // Debug output
+                executorService.submit(() -> {
+                    try {
+                        webSocketClient.sendOperation(sessionCode, operation);
+                        System.out.println("Sent operation: delete at position: " + caretPos);
+                    } catch (Exception e) {
+                        System.err.println("Failed to send operation: " + e.getMessage());
+                    }
+                });
+
                 System.out.println("Delete pressed - Deleted at position: " + caretPos);
-                this.crdtTree.printCRDTTree();
-                this.crdtTree.printText();
+                crdtTree.printCRDTTree();
+                crdtTree.printText();
 
-                // For delete, caret should remain at the same position
                 int newCaretPos = caretPos;
-
-                // We need to manually update UI and handle the event
                 updateTextEditorContent(newCaretPos);
                 event.consume();
             }
@@ -189,37 +202,46 @@ public class PrimaryController {
     }
 
     private void handleKeyTyped(KeyEvent event) {
-        // Handle character insertion
         String character = event.getCharacter();
-
-        // Skip control characters, empty strings, and check if it's a deletion (handled elsewhere)
         if (character.length() == 0 || character.codePointAt(0) < 32 ||
                 character.equals("\b") || character.equals("\u007F")) {
             return;
         }
 
         int caretPos = textEditor.getCaretPosition();
-
-        // Insert the character at the current caret position
         for (int i = 0; i < character.length(); i++) {
             char ch = character.charAt(i);
-            CRDTNode newNode = new CRDTNode(ch,LocalDateTime.now().toString(),currentUser.getUserID(),caretPos + i);
-            CRDTNode node = crdtTree.insert(newNode);
-            currentUser.addToUndoStack("insert", node, caretPos + i);
+            CRDTNode newNode = new CRDTNode(
+                    currentUser.getUserID() + "_" + LocalDateTime.now().toString(),
+                    ch,
+                    LocalDateTime.now().toString(),
+                    false,
+                    null,
+                    currentUser.getUserID(),
+                    caretPos + i
+            );
+            CRDTNode node;
+            synchronized (crdtLock) { // Synchronize CRDT access
+                node = crdtTree.insert(newNode);
+                currentUser.addToUndoStack("insert", node, caretPos + i);
+            }
             Operation operation = new Operation("insert", node, caretPos + i);
 
-            // Debug output
+            executorService.submit(() -> {
+                try {
+                    webSocketClient.sendOperation(sessionCode, operation);
+                    System.out.println("Sent operation: " + operation.getType() + " for node: " + node.getId());
+                } catch (Exception e) {
+                    System.err.println("Failed to send operation: " + e.getMessage());
+                }
+            });
+
             System.out.println("Character typed: '" + ch + "' at position: " + (caretPos + i));
-            this.crdtTree.printCRDTTree();
-            this.crdtTree.printText();
-            System.out.println("SESSION CODE IS " + sessionCode);
-            webSocketClient.sendOperation(sessionCode, operation);
+            crdtTree.printCRDTTree();
+            crdtTree.printText();
         }
 
-        // Remember to increment the caret position for the update
         int newCaretPos = caretPos + character.length();
-
-        // Update UI to reflect changes and prevent default behavior
         updateTextEditorContent(newCaretPos);
         event.consume();
     }
@@ -259,26 +281,34 @@ public class PrimaryController {
 
     // Method to handle remote operations received from WebSocket
     public void handleRemoteOperation(Operation operation) {
-        Platform.runLater(() -> {
-            isUpdating = true;
+        // Process CRDT operation in background thread
+        executorService.submit(() -> {
+            try {
+                synchronized (crdtLock) { // Synchronize access to crdtTree
+                    System.out.println("Processing operation from server: " + operation.getType());
+                    if ("insert".equals(operation.getType())) {
+                        CRDTNode node = operation.getNode();
+                        int position = operation.getIndex();
+                        crdtTree.insert(node);
+                    } else if ("delete".equals(operation.getType())) {
+                        int position = operation.getIndex();
+                        crdtTree.delete(position, operation.getNode().getUserID());
+                        crdtTree.printCRDTTree();
+                    }
+                }
 
-            System.out.println("Received operation from server: " + operation.getType());
-            if ("insert".equals(operation.getType())) {
-                CRDTNode node = operation.getNode();
-                int position = operation.getIndex();
-                this.crdtTree.insert(node);
-            } else if ("delete".equals(operation.getType())) {
-                int position = operation.getIndex();
-                this.crdtTree.delete(position, operation.getNode().getUserID());
-                this.crdtTree.printCRDTTree();
+                // Update UI on FX thread
+                Platform.runLater(() -> {
+                    isUpdating = true;
+                    updateTextEditorContent();
+                    isUpdating = false;
+                    System.out.println("UI updated after remote operation: " + operation.getType());
+                });
+            } catch (Exception e) {
+                System.err.println("Error processing remote operation: " + e.getMessage());
             }
-
-            // Update the UI with the new CRDT state
-            updateTextEditorContent();
-            isUpdating = false;
         });
     }
-
 
 
     @FXML
@@ -492,45 +522,35 @@ public class PrimaryController {
         alert.showAndWait();
     }
 
-    public void InitializeDocContents(String DocID,String DocumentName,String CurrentUserName, String Viewer_Code,String Editor_Code){
-
+    public void InitializeDocContents(String DocID, String DocumentName, String CurrentUserName, String Viewer_Code, String Editor_Code) {
         this.documentName = DocumentName;
         this.DocID = DocID;
         this.currentUserLabel.setText(CurrentUserName);
         this.viewerCodeLabel.setText(Viewer_Code);
         this.editorCodeLabel.setText(Editor_Code);
         this.currentUser = new User(CurrentUserName);
-
         this.sessionCode = Editor_Code;
 
         try {
-            // Use a Consumer that adds to the operationBuffer and processes it
-            Consumer<Operation> operationHandler = operation -> {
-                operationBuffer.add(operation);
-
-            };// Create the WebSocket config
-
-
-
-            this.webSocketClient.setTextUpdateCallback(textContent -> {
-
-                textEditor.setText(textContent);
-
+            webSocketClient.setOperationHandler(this::handleRemoteOperation);
+            webSocketClient.setTextUpdateCallback(textContent -> {
+                Platform.runLater(() -> {
+                    textEditor.setText(textContent);
+                    System.out.println("Text updated from server: " + textContent);
+                });
             });
-
-            this.webSocketClient.connect(this.sessionCode);
-
+            webSocketClient.connect(this.sessionCode);
         } catch (RuntimeException e) {
             System.err.println("Failed to initialize WebSocket: " + e.getMessage());
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("Connection Error");
-            alert.setHeaderText("Failed to connect to WebSocket server");
-            alert.setContentText("Please ensure the server is running and try again.");
-            alert.showAndWait();
+            Platform.runLater(() -> {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Connection Error");
+                alert.setHeaderText("Failed to connect to WebSocket server");
+                alert.setContentText("Please ensure the server is running and try again.");
+                alert.showAndWait();
+            });
         }
-
     }
-
     public void setTextArea(String text)
     {
         textEditor.setText(text);
@@ -540,4 +560,6 @@ public class PrimaryController {
 
     public void addComment(ActionEvent actionEvent) {
     }
+
+
 }

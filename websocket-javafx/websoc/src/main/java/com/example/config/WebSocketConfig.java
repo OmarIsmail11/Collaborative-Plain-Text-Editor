@@ -210,6 +210,16 @@ public class WebSocketConfig {
         }).start();
     }
 
+    public void sendUndo(Operation op) {
+        if (stompSession != null && stompSession.isConnected()) {
+            String destination = "/app/operation/" + sessionCode;
+            stompSession.send(destination, op);
+            System.out.println("Operation sent to: " + destination);
+        } else {
+            System.err.println("Cannot send operation: session is null or disconnected");
+        }
+    }
+
     // 7. Add a method in StompSessionHandler to handle disconnection
     private class MyStompSessionHandler extends StompSessionHandlerAdapter {
         @Override

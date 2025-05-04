@@ -156,104 +156,139 @@ public class PrimaryController {
     }
 
     private void handleKeyPressed(KeyEvent event) {
-        if (event.getCode() == KeyCode.BACK_SPACE) {
-            int caretPos = textEditor.getCaretPosition();
-            if (caretPos > 0 && caretPos <= crdtTree.visibleNodes.size()) {
-                int deletePos = caretPos - 1;
-                CRDTNode delNode;
+        if(!this.isReadOnly) {
+            if (event.getCode() == KeyCode.ENTER) {
+                int caretPos = textEditor.getCaretPosition();
+                String nodeId = currentUser.getUserID() + "_" + LocalDateTime.now().toString();
+
+                localOperationIds.add(nodeId);
+                CRDTNode newNode = new CRDTNode(
+                        nodeId, '\n', LocalDateTime.now().toString(), false, null, currentUser.getUserID(), caretPos
+                );
+
                 synchronized (crdtLock) {
-                    delNode = crdtTree.visibleNodes.get(deletePos);
-                    crdtTree.delete(deletePos, currentUser.getUserID());
-                    currentUser.addToUndoStack("delete", delNode, deletePos);
+                    crdtTree.insert(newNode);
+                    currentUser.addToUndoStack("insert", newNode, caretPos);
                 }
 
-                String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
-                localOperationIds.add(operationId);
-                Operation operation = new Operation("delete", delNode, deletePos);
-                operation.setId(operationId);
+                Operation operation = new Operation("insert", newNode, caretPos);
+                operation.setId(nodeId);
 
                 executorService.submit(() -> {
                     try {
                         webSocketClient.sendOperation(sessionCode, operation);
-                        System.out.println("Sent operation: delete at position: " + deletePos);
+                        System.out.println("Sent operation: insert newline at position: " + caretPos);
                     } catch (Exception e) {
                         System.err.println("Failed to send operation: " + e.getMessage());
                     }
                 });
 
-                updateTextEditorContent(deletePos);
+                updateTextEditorContent(caretPos + 1);
                 event.consume();
-            }
-        } else if (event.getCode() == KeyCode.DELETE) {
-            int caretPos = textEditor.getCaretPosition();
-            if (caretPos < crdtTree.visibleNodes.size()) {
-                CRDTNode delNode;
-                synchronized (crdtLock) {
-                    delNode = crdtTree.visibleNodes.get(caretPos);
-                    crdtTree.delete(caretPos, currentUser.getUserID());
-                    currentUser.addToUndoStack("delete", delNode, caretPos);
-                }
-
-                String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
-                localOperationIds.add(operationId);
-                Operation operation = new Operation("delete", delNode, caretPos);
-                operation.setId(operationId);
-
-                executorService.submit(() -> {
-                    try {
-                        webSocketClient.sendOperation(sessionCode, operation);
-                        System.out.println("Sent operation: delete at position: " + caretPos);
-                    } catch (Exception e) {
-                        System.err.println("Failed to send operation: " + e.getMessage());
+            } else if (event.getCode() == KeyCode.BACK_SPACE) {
+                int caretPos = textEditor.getCaretPosition();
+                if (caretPos > 0 && caretPos <= crdtTree.visibleNodes.size()) {
+                    int deletePos = caretPos - 1;
+                    CRDTNode delNode;
+                    synchronized (crdtLock) {
+                        delNode = crdtTree.visibleNodes.get(deletePos);
+                        crdtTree.delete(deletePos, currentUser.getUserID());
+                        currentUser.addToUndoStack("delete", delNode, deletePos);
                     }
-                });
 
-                updateTextEditorContent(caretPos);
-                event.consume();
+                    String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
+                    localOperationIds.add(operationId);
+                    Operation operation = new Operation("delete", delNode, deletePos);
+                    operation.setId(operationId);
+
+                    executorService.submit(() -> {
+                        try {
+                            webSocketClient.sendOperation(sessionCode, operation);
+                            System.out.println("Sent operation: delete at position: " + deletePos);
+                        } catch (Exception e) {
+                            System.err.println("Failed to send operation: " + e.getMessage());
+                        }
+                    });
+
+                    updateTextEditorContent(deletePos);
+                    event.consume();
+                }
+            } else if (event.getCode() == KeyCode.DELETE) {
+                int caretPos = textEditor.getCaretPosition();
+                if (caretPos < crdtTree.visibleNodes.size()) {
+                    CRDTNode delNode;
+                    synchronized (crdtLock) {
+                        delNode = crdtTree.visibleNodes.get(caretPos);
+                        crdtTree.delete(caretPos, currentUser.getUserID());
+                        currentUser.addToUndoStack("delete", delNode, caretPos);
+                    }
+
+                    String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
+                    localOperationIds.add(operationId);
+                    Operation operation = new Operation("delete", delNode, caretPos);
+                    operation.setId(operationId);
+
+                    executorService.submit(() -> {
+                        try {
+                            webSocketClient.sendOperation(sessionCode, operation);
+                            System.out.println("Sent operation: delete at position: " + caretPos);
+                        } catch (Exception e) {
+                            System.err.println("Failed to send operation: " + e.getMessage());
+                        }
+                    });
+
+                    updateTextEditorContent(caretPos);
+                    event.consume();
+                }
             }
         }
     }
     private void handleKeyTyped(KeyEvent event) {
-        String character = event.getCharacter();
-        if (character.length() == 0 || character.codePointAt(0) < 32 ||
-                character.equals("\b") || character.equals("\u007F")) {
-            return;
-        }
-
-        int caretPos = textEditor.getCaretPosition();
-        for (int i = 0; i < character.length(); i++) {
-            char ch = character.charAt(i);
-            String nodeId = currentUser.getUserID() + "_" + LocalDateTime.now().toString();
-
-            localOperationIds.add(nodeId);
-            CRDTNode newNode = new CRDTNode(
-                    nodeId, ch, LocalDateTime.now().toString(), false, null, currentUser.getUserID(), caretPos + i
-            );
-
-            synchronized (crdtLock) {
-                crdtTree.insert(newNode);
-                currentUser.addToUndoStack("insert", newNode, caretPos + i);
+        if(!this.isReadOnly) {
+            String character = event.getCharacter();
+            if (character.length() == 0 ||
+                    (character.codePointAt(0) < 32 && character.codePointAt(0) != 10) || // Allow newline (10)
+                    character.equals("\b") || character.equals("\u007F") ||
+                    character.equals("\n")) { // Skip newline in keyTyped since we handle it in keyPressed
+                return;
             }
 
-            Operation operation = new Operation("insert", newNode, caretPos + i);
-            operation.setId(nodeId);
+            int caretPos = textEditor.getCaretPosition();
+            for (int i = 0; i < character.length(); i++) {
+                char ch = character.charAt(i);
+                String nodeId = currentUser.getUserID() + "_" + LocalDateTime.now().toString();
 
-            executorService.submit(() -> {
-                try {
-                    webSocketClient.sendOperation(sessionCode, operation);
+                localOperationIds.add(nodeId);
+                CRDTNode newNode = new CRDTNode(
+                        nodeId, ch, LocalDateTime.now().toString(), false, null, currentUser.getUserID(), caretPos + i
+                );
 
-                } catch (Exception e) {
-                    System.err.println("Failed to send operation: " + e.getMessage());
+                synchronized (crdtLock) {
+                    crdtTree.insert(newNode);
+                    currentUser.addToUndoStack("insert", newNode, caretPos + i);
                 }
-            });
-            System.out.println("Sent operation: insert at position: " + (caretPos + i));
 
-            crdtTree.printCRDTTree();
-            crdtTree.printText();
+                Operation operation = new Operation("insert", newNode, caretPos + i);
+                operation.setId(nodeId);
+
+                executorService.submit(() -> {
+                    try {
+                        webSocketClient.sendOperation(sessionCode, operation);
+
+                    } catch (Exception e) {
+                        System.err.println("Failed to send operation: " + e.getMessage());
+                    }
+                });
+                System.out.println("Sent operation: insert at position: " + (caretPos + i));
+
+                crdtTree.printCRDTTree();
+                crdtTree.printText();
+            }
+
+
+            updateTextEditorContent(caretPos + character.length());
+            event.consume();
         }
-
-        updateTextEditorContent(caretPos + character.length());
-        event.consume();
     } // Method to update the text editor content based on CRDT state with specific caret position
     private void updateTextEditorContent(int newCaretPos) {
         synchronized (uiUpdateLock) {
@@ -394,6 +429,7 @@ public class PrimaryController {
             return;
         }
         Operation op = currentUser.undo(this.crdtTree);
+        webSocketClient.sendUndo(op);
 
         if (op != null)
             System.out.println("Undid " + op.getType() + " on node " + op.getNode().getId());

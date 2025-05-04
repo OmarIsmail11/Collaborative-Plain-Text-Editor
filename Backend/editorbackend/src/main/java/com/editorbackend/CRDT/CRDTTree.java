@@ -9,13 +9,28 @@ import java.util.Comparator;
 import java.util.List;
 
 
-@Service
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+
+
 public class CRDTTree {
+    @JsonIgnore
     private CRDTNode root;
+
+    @JsonIgnore
     private CRDTNode visibleRoot;
+
+    @JsonProperty("nodeList")
     private List<CRDTNode> nodeList;
+
+    @JsonProperty("formatter")
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
+
+    @JsonIgnore
     public List<Character> visibleText = new ArrayList<>();
+
+    @JsonIgnore
     public List<CRDTNode> visibleNodes = new ArrayList<>();
 
     public CRDTTree() {
@@ -31,7 +46,7 @@ public class CRDTTree {
         visibleNodes.clear();
         dfsBuildText(root);
         dfsBuildVisibleNodes(root);
-//
+
         CRDTNode parent;
         int insertionIndex;
 
@@ -44,7 +59,7 @@ public class CRDTTree {
                 parent = lastNode.getParent() == null ? root : lastNode.getParent();
                 insertionIndex = lastNode.getIndex() + 1;
 
-                String dummyNodeId = node.getUserID()+ "_DUMMY_" + visibleNodes.size();
+                String dummyNodeId = node.getUserID() + "_DUMMY_" + visibleNodes.size();
                 CRDTNode dummyNode = new CRDTNode(dummyNodeId, ' ', LocalDateTime.now().toString(), false, parent, node.getUserID(), insertionIndex);
                 parent.getNextNodes().add(dummyNode);
                 nodeList.add(dummyNode);
@@ -57,7 +72,6 @@ public class CRDTTree {
             parent = visibleNodes.get(visibleNodes.size() - 1).getParent();
             insertionIndex = visibleNodes.get(visibleNodes.size() - 1).getIndex() + 1;
         } else {
-
             CRDTNode targetNode = visibleNodes.get(node.getIndex() - 1);
             parent = targetNode.getParent();
             insertionIndex = targetNode.getIndex() + 1;
@@ -137,5 +151,76 @@ public class CRDTTree {
     public void printCRDTTree() {
         System.out.println("CRDT Tree Structure:");
         printTree(root, "", true);
+    }
+
+    // Rebuild tree from nodeList
+    public void rebuildFromNodeList() {
+        if (nodeList == null || nodeList.isEmpty()) {
+            throw new IllegalStateException("nodeList is empty or null");
+        }
+
+        // Find root (node with id starting  "ROOT" and parent == null)
+        root = nodeList.stream()
+                .filter(node -> node.getId().startsWith("ROOT") && node.getParent() == null)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Root node not found in nodeList"));
+
+        // Find visibleRoot (node with id "ROOT" in visibleNodes or fallback to root)
+        visibleRoot = nodeList.stream()
+                .filter(node -> node.getId().startsWith("ROOT") && visibleNodes.contains(node))
+                .findFirst()
+                .orElse(root);
+
+        // Rebuild visibleNodes and visibleText
+        visibleNodes.clear();
+        visibleText.clear();
+        dfsBuildVisibleNodes(root);
+        dfsBuildText(root);
+    }
+
+    // Getters and setters
+    public CRDTNode getRoot() {
+        return root;
+    }
+
+    public void setRoot(CRDTNode root) {
+        this.root = root;
+    }
+
+    public CRDTNode getVisibleRoot() {
+        return visibleRoot;
+    }
+
+    public void setVisibleRoot(CRDTNode visibleRoot) {
+        this.visibleRoot = visibleRoot;
+    }
+
+    public List<CRDTNode> getNodeList() {
+        return nodeList;
+    }
+
+    public void setNodeList(List<CRDTNode> nodeList) {
+        this.nodeList = nodeList;
+    }
+
+    public List<Character> getVisibleText() {
+        return visibleText;
+    }
+
+    public void setVisibleText(List<Character> visibleText) {
+        this.visibleText = visibleText;
+    }
+
+    public List<CRDTNode> getVisibleNodes() {
+        return visibleNodes;
+    }
+
+    public void setVisibleNodes(List<CRDTNode> visibleNodes) {
+        this.visibleNodes = visibleNodes;
+    }
+
+    @Override
+    public String toString() {
+        return "CRDTTree{nodeList=" + nodeList + "}";
     }
 }

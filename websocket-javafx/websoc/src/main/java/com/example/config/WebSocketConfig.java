@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import com.example.Controllers.PrimaryController;
+import com.example.Model.CRDTNode;
+import com.example.Model.CRDTTree;
 import com.example.Model.Operation;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -37,9 +39,11 @@ import org.springframework.web.socket.sockjs.client.WebSocketTransport;
 public class WebSocketConfig {
     private StompSession stompSession;
     private Consumer<String> textUpdateCallback;
+    private Consumer<CRDTTree> crdtTreeInitializer;
     private WebSocketStompClient stompClient;
     private Consumer<Operation> operationHandler;
     private String sessionCode;
+    private final Object crdtLock = new Object();
 
     // Remove @Autowired and the primaryController field
     // private PrimaryController primaryController;
@@ -55,6 +59,10 @@ public class WebSocketConfig {
         this.textUpdateCallback = callback;
     }
 
+    public void setCRDTTreeInitializer(Consumer<CRDTTree> initializer) {
+        this.crdtTreeInitializer = initializer;
+    }
+
     public void sendOperation(String sessionCode, Operation operation) {
         if (stompSession != null && stompSession.isConnected()) {
             String destination = "/app/operation/" + sessionCode;
@@ -66,9 +74,9 @@ public class WebSocketConfig {
 
     }
 
-    public void requestInitialState(String sessionCode) {
+    public void requestInitialState(String sessionCode,String UserId) {
         if (stompSession != null && stompSession.isConnected()) {
-            String destination = "/app/getState/" + sessionCode;
+            String destination = "/app/initialState/" + sessionCode+"/"+UserId;
             stompSession.send(destination, ""); // Empty message as request
             System.out.println("Requested initial state for session: " + sessionCode);
         } else {
@@ -77,30 +85,54 @@ public class WebSocketConfig {
     }
 
     // 2. Subscribe to initial state topic
-    public void subscribeToInitialState(String sessionCode) {
+    public void subscribeToInitialState(String sessionCode, String UserID) {
         if (stompSession != null && stompSession.isConnected()) {
-            String topic = "/topic/initialState/" + sessionCode;
+            String topic = "/queue/initialState/" + sessionCode + "/" + UserID;
+            System.out.println("Subscribing to: " + topic + ", session connected: " + stompSession.isConnected());
             stompSession.subscribe(topic, new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {
-                    return String.class;
+                    return CRDTTree.class;
                 }
 
                 @Override
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    if (payload instanceof String) {
-                        String initialState = (String) payload;
-                        System.out.println("Received initial state: " + initialState);
-                        if (textUpdateCallback != null) {
-                            textUpdateCallback.accept(initialState);
+                    System.out.println("Received payload: " + payload);
+                    if (payload instanceof CRDTTree) {
+                        CRDTTree initialState = (CRDTTree) payload;
+                        // Rebuild the tree from nodeList
+                        initialState.rebuildFromNodeList();
+                        System.out.println("Received initial state for userID " + UserID + ": " + initialState);
+                        System.out.println("Node list: " + (initialState.getNodeList() != null ? initialState.getNodeList() : "null"));
+                        System.out.println("Visible nodes: " + (initialState.getVisibleNodes() != null ? initialState.getVisibleNodes() : "null"));
+                        System.out.println("Visible text: " + (initialState.getVisibleText() != null ? initialState.getVisibleText() : "null"));
+                        System.out.println("Root: " + (initialState.getRoot() != null ? initialState.getRoot() : "null"));
+                        System.out.println("Visible root: " + (initialState.getVisibleRoot() != null ? initialState.getVisibleRoot() : "null"));
+                        if (crdtTreeInitializer != null) {
+                            crdtTreeInitializer.accept(initialState);
                         }
+                        if (textUpdateCallback != null) {
+                            StringBuilder content = new StringBuilder();
+                            synchronized (crdtLock) {
+                                List<CRDTNode> nodes = initialState.getVisibleNodes();
+                                if (nodes != null) {
+                                    for (CRDTNode node : nodes) {
+                                        content.append(node.getValue());
+                                    }
+                                }
+                                textUpdateCallback.accept(content.toString());
+                            }
+                        }
+                    } else {
+                        System.err.println("Unexpected payload type: " + (payload != null ? payload.getClass().getName() : "null"));
                     }
                 }
             });
-            System.out.println("Subscribed to initial state for session: " + sessionCode);
+            System.out.println("Subscribed to initial state for session: " + sessionCode + ", userID: " + UserID);
+        } else {
+            System.err.println("Cannot subscribe to initial state: session is null or disconnected");
         }
     }
-
     public void connect(String sessionCode) {
         this.sessionCode = sessionCode; // Store session code for reconnection
         connectToWebSocket();
@@ -130,6 +162,9 @@ public class WebSocketConfig {
             stompSession = stompClient.connectAsync(url, sessionHandler).get();
 
             String topic = "/topic/session/" + sessionCode;
+            // /topic server ---->>> subscribers
+            // /app  client -->>> server
+            // /queue/topic -->>>> subscriber
             stompSession.subscribe(topic, new StompFrameHandler() {
                 @Override
                 public Type getPayloadType(StompHeaders headers) {

@@ -8,46 +8,59 @@ import java.util.*;
 
 
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 
 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class CRDTNode {
+    @JsonProperty("id")
     private String id;
+
+    @JsonProperty("value")
     private char value;
+
+    @JsonProperty("timestamp")
     private String timestamp;
+
+    @JsonProperty("isDeleted")
     private boolean isDeleted;
 
+    @JsonProperty("parent")
     private CRDTNode parent;
+
+    @JsonProperty("nextNodes")
     private List<CRDTNode> nextNodes;
-    private String UserID;
+
+    @JsonProperty("userID")
+    private String userID;
+
+    @JsonProperty("index")
     private int index;
 
-    // Default constructor required for Jackson deserialization
     public CRDTNode() {
         this.nextNodes = new ArrayList<>();
     }
 
-    public CRDTNode(char value, String timestamp, String UserID, int index) {
-        this.id = UserID+"_"+timestamp;
+    public CRDTNode(char value, String timestamp, String userID, int index) {
+        this.id = userID + "_" + timestamp;
         this.value = value;
         this.timestamp = timestamp;
         this.nextNodes = new ArrayList<>();
-        this.UserID = UserID;
+        this.userID = userID;
         this.index = index;
     }
 
-    public CRDTNode(String id, char value, String timestamp, boolean isDeleted, CRDTNode parent, String UserID, int index) {
+    public CRDTNode(String id, char value, String timestamp, boolean isDeleted, CRDTNode parent, String userID, int index) {
         this.id = id;
         this.value = value;
         this.timestamp = timestamp;
         this.isDeleted = isDeleted;
         this.parent = parent;
         this.nextNodes = new ArrayList<>();
-        this.UserID = UserID;
+        this.userID = userID;
         this.index = index;
     }
 
-    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -101,11 +114,11 @@ public class CRDTNode {
     }
 
     public String getUserID() {
-        return UserID;
+        return userID;
     }
 
     public void setUserID(String userID) {
-        UserID = userID;
+        this.userID = userID;
     }
 
     public int getIndex() {
@@ -118,7 +131,13 @@ public class CRDTNode {
 
     public void printNode() {
         System.out.println("Node ID: " + id + ", Value: " + value + ", Timestamp: " + timestamp +
-                ", Deleted: " + isDeleted + ", Index: " + index + ", UserID: " + UserID +
+                ", Deleted: " + isDeleted + ", Index: " + index + ", UserID: " + userID +
                 ", Parent ID: " + (parent != null ? parent.getId() : "null"));
+    }
+
+    @Override
+    public String toString() {
+        return "CRDTNode{id='" + id + "', value=" + value + ", timestamp='" + timestamp + "', isDeleted=" + isDeleted +
+                ", userID='" + userID + "', index=" + index + "}";
     }
 }

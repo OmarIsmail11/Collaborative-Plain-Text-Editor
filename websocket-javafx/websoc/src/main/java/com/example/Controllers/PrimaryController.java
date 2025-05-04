@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import com.example.config.WebSocketConfig;
@@ -97,7 +98,7 @@ public class PrimaryController {
     @Autowired
     public WebSocketConfig webSocketClient;
     private final ExecutorService executorService = Executors.newFixedThreadPool(2);
-    private final Object crdtLock = new Object();
+    private final ReentrantLock crdtLock = new ReentrantLock();
     private Set<String> localOperationIds = new HashSet<>();
     private volatile boolean isUpdating = false;
     private final Object uiUpdateLock = new Object();
@@ -119,7 +120,7 @@ public class PrimaryController {
         if (penguinUserLabel != null) availableUserLabels.add(penguinUserLabel);
 
         // Add key event handlers for real-time character insertion tracking
-        textEditor.addEventHandler(KeyEvent.KEY_RELEASED, this::handleKeyPressed);
+        textEditor.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
         textEditor.addEventHandler(KeyEvent.KEY_TYPED, this::handleKeyTyped);
 
         textEditor.addEventHandler(KeyEvent.KEY_RELEASED, event -> {
@@ -257,6 +258,7 @@ public class PrimaryController {
     private void updateTextEditorContent(int newCaretPos) {
         synchronized (uiUpdateLock) {
             if (isUpdating) {
+                System.out.println("Skipping UI update: already updating");
                 return; // Skip if already updating to prevent queuing multiple updates
             }
             isUpdating = true;
@@ -264,10 +266,18 @@ public class PrimaryController {
 
         try {
             StringBuilder content = new StringBuilder();
-            synchronized (crdtLock) {
-                for (CRDTNode node : crdtTree.visibleNodes) {
+            crdtLock.lock();
+            System.out.println("Acquired crdtLock for UI update at " + System.currentTimeMillis());
+            System.out.println("UI update reading visibleNodes: " + crdtTree.getVisibleNodes());
+
+            try {
+                for (CRDTNode node : crdtTree.getVisibleNodes()) {
                     content.append(node.getValue());
+                    System.out.println("text = " + content.toString());
                 }
+            } finally {
+                System.out.println("Releasing crdtLock after UI read at " + System.currentTimeMillis());
+                crdtLock.unlock();
             }
 
             int safeCaretPos = Math.min(Math.max(newCaretPos, 0), content.length());
@@ -288,7 +298,8 @@ public class PrimaryController {
             }
         }
     }
-    // Overloaded method that uses current caret position (for backward compatibility)
+
+    // Overloaded method that uses current caret position
     private void updateTextEditorContent() {
         int caretPos = textEditor.getCaretPosition();
         updateTextEditorContent(caretPos);
@@ -308,7 +319,11 @@ public class PrimaryController {
 
         executorService.submit(() -> {
             try {
-                synchronized (crdtLock) {
+                crdtLock.lock();
+                System.out.println("Acquired crdtLock for operation: " + operation.getType() + " at " + System.currentTimeMillis());
+                System.out.println("Before operation, visibleNodes: " + crdtTree.getVisibleNodes());
+
+                try {
                     System.out.println("Processing remote operation: " + operation.getType());
                     if ("insert".equals(operation.getType())) {
                         if (operation.getNode() == null) {
@@ -316,25 +331,32 @@ public class PrimaryController {
                             return;
                         }
                         crdtTree.insert(operation.getNode());
+                        System.out.println("After operation "+ crdtTree.getVisibleNodes());
+                        crdtTree.printCRDTTree();
                     } else if ("delete".equals(operation.getType())) {
-                        if (operation.getNode() == null || operation.getIndex() < 0 || operation.getIndex() >= crdtTree.visibleNodes.size()) {
+                        if (operation.getNode() == null || operation.getIndex() < 0 || operation.getIndex() >= crdtTree.getVisibleNodes().size()) {
                             System.err.println("Invalid delete operation: index=" + operation.getIndex());
                             return;
                         }
                         crdtTree.delete(operation.getIndex(), operation.getNode().getUserID());
+                        crdtTree.printCRDTTree();
                     } else {
                         System.err.println("Unknown operation type: " + operation.getType());
                         return;
                     }
+                } finally {
+                    System.out.println("Releasing crdtLock after operation at " + System.currentTimeMillis());
+                    crdtLock.unlock();
                 }
 
-                updateTextEditorContent(lastCaretPos); // Use last known caret position
+                System.out.println("After operation, visibleNodes: " + crdtTree.getVisibleNodes());
+                updateTextEditorContent();
+
             } catch (Exception e) {
                 System.err.println("Error processing remote operation: " + e.getMessage());
             }
         });
-    }
-    @FXML
+    }  @FXML
     private void copyViewerCode() {
         if (viewerCodeLabel == null) {
             System.err.println("viewerCodeLabel is null in copyViewerCode()");
@@ -579,7 +601,21 @@ public class PrimaryController {
                     System.out.println("Text updated from server: " + textContent);
                 });
             });
+            webSocketClient.setCRDTTreeInitializer(tree -> {
+                this.crdtTree = tree;
+                updateTextEditorContent();
+                System.out.println("Received new tree");
+                this.crdtTree.printCRDTTree();
+                this.crdtTree.printText();
+            });
+
+            // Connect to WebSocket and subscribe to initial state
             webSocketClient.connect(this.sessionCode);
+
+            webSocketClient.subscribeToInitialState(this.sessionCode,currentUser.getUserID());
+            webSocketClient.requestInitialState(this.sessionCode,currentUser.getUserID());
+
+
         } catch (RuntimeException e) {
             System.err.println("Failed to initialize WebSocket: " + e.getMessage());
             Platform.runLater(() -> {
@@ -601,5 +637,14 @@ public class PrimaryController {
     public void addComment(ActionEvent actionEvent) {
     }
 
+    //TODO
+    //BUTTON TO GO BACK
+    // HANDLER FOR BUTTON
+    // TERMINATE WEBSOCKET CONNECTION
+    // ACTIVE USERS LIST ON JOIN
+    // WEBSOCKET FOR JOINING /app/joined/{userID}
+    //broadcast
+    //add user to users list
+    //this.weboscketClient.close();
 
 }

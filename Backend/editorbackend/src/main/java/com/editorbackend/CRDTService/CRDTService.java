@@ -21,14 +21,13 @@ public class CRDTService {
 
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
-    public CRDTNode insert(String code, String userId,CRDTNode newNode) {
+    public CRDTNode insert(String code, String userId, CRDTNode newNode) {
         CRDTTree tree = documentRegistry.getCRDTTree(code);
 
         Map<String, User> users = documentRegistry.getUsers(code);
         if (tree == null) return null;
 
         User user = users.computeIfAbsent(userId, k -> new User(userId));
-
 
 
         CRDTNode node = tree.insert(newNode);
@@ -125,11 +124,15 @@ public class CRDTService {
         return sb.toString();
     }
 
-//    public void updateDocumentText(Document doc, String newText) {
-//        Document document = documentRegistry.getDocumentByCode();
-//
-//
-//
-//
-//    }
+    public CRDTTree getInitialState(String code) {
+        CRDTTree tree = documentRegistry.getCRDTTree(code);
+        CRDTTree newTree = new CRDTTree();
+
+        if (tree == null) return newTree;
+
+        return tree;
+
+
+
+    }
 }

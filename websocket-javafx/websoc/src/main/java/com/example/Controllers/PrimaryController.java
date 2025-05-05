@@ -108,6 +108,10 @@ public class PrimaryController {
     private volatile boolean isUpdating = false;
     private final Object uiUpdateLock = new Object();
     private int lastCaretPos = 0;
+
+    public List<User> usersInSession = new ArrayList<>();
+    public List<User> usersInLabels = new ArrayList<>();
+
     private final ScheduledExecutorService displayScheduler = Executors.newSingleThreadScheduledExecutor();
     private Map<String, Integer> userCursorLines = new HashMap<>(); // Track user cursor positions
     private int lastSentLine = -1; // Track last sent line to avoid duplicate sends
@@ -128,6 +132,7 @@ public class PrimaryController {
         if (foxUserLabel != null) availableUserLabels.add(foxUserLabel);
         if (penguinUserLabel != null) availableUserLabels.add(penguinUserLabel);
 
+        // Add key event handlers for real-time character insertion tracking
         // Add key event handlers for real-time character insertion tracking
         textEditor.addEventHandler(KeyEvent.KEY_PRESSED, this::handleKeyPressed);
         textEditor.addEventHandler(KeyEvent.KEY_TYPED, this::handleKeyTyped);
@@ -709,24 +714,24 @@ public class PrimaryController {
         }
     }
 
-    public void addUser(String username) {
-        if (username == null || username.trim().isEmpty()) {
-            return;
-        }
-
-        if (availableUserLabels == null || availableUserLabels.isEmpty()) {
-            System.err.println("availableUserLabels is null or empty in addUser()");
-            return;
-        }
-
-        for (Label userLabel : availableUserLabels) {
-            if (userLabel != null && !userLabel.isVisible()) {
-                userLabel.setText(username);
-                userLabel.setVisible(true);
-                break;
-            }
-        }
-    }
+//    public void addUser(String username) {
+//        if (username == null || username.trim().isEmpty()) {
+//            return;
+//        }
+//
+//        if (availableUserLabels == null || availableUserLabels.isEmpty()) {
+//            System.err.println("availableUserLabels is null or empty in addUser()");
+//            return;
+//        }
+//
+//        for (Label userLabel : availableUserLabels) {
+//            if (userLabel != null && !userLabel.isVisible()) {
+//                userLabel.setText(username);
+//                userLabel.setVisible(true);
+//                break;
+//            }
+//        }
+//    }
 
     public void removeUser(String username) {
         if (availableUserLabels == null || availableUserLabels.isEmpty()) {
@@ -755,10 +760,11 @@ public class PrimaryController {
     public void InitializeDocContents(String DocID, String DocumentName, String CurrentUserName, String Viewer_Code, String Editor_Code) {
         this.documentName = DocumentName;
         this.DocID = DocID;
-        this.currentUserLabel.setText(CurrentUserName);
+        this.currentUserLabel.setText(CurrentUserName + " (You)");
         this.viewerCodeLabel.setText(Viewer_Code);
         this.editorCodeLabel.setText(Editor_Code);
         this.currentUser = new User(CurrentUserName);
+        usersInSession.add(this.currentUser);
         this.sessionCode = Editor_Code;
 
         // Initialize webSocketClient manually if it's null
@@ -786,6 +792,7 @@ public class PrimaryController {
             // Connect to WebSocket and subscribe to initial state
             webSocketClient.connect(this.sessionCode);
 
+            webSocketClient.getUserList(this.sessionCode);
             webSocketClient.subscribeToInitialState(this.sessionCode,currentUser.getUserID());
             webSocketClient.requestInitialState(this.sessionCode,currentUser.getUserID());
 
@@ -803,8 +810,102 @@ public class PrimaryController {
     }
 
     private void addUser(User user) {
+        System.out.println(user.getUserID() + " is attempting to be added.");
 
+        // Only add the user if they are not already in the usersInSession list
+        if (!isUserAlreadyAdded(user))
+        {
+            System.out.println(user.getUserID() + " added to the session");
+
+            // Add the user to the list
+            usersInSession.add(user);
+            // Update the UI on the JavaFX thread
+            Platform.runLater(() -> {
+                boolean userAdded = false;
+
+                // Update user labels based on availability
+                if (!crabUserLabel.isVisible()) {
+                    crabUserLabel.setText(user.getUserID());
+                    crabUserLabel.setVisible(true);
+                    userAdded = true;
+                    usersInLabels.add(user);
+                } else if (!foxUserLabel.isVisible()) {
+                    foxUserLabel.setText(user.getUserID());
+                    foxUserLabel.setVisible(true);
+                    userAdded = true;
+                    usersInLabels.add(user);
+                } else if (!penguinUserLabel.isVisible()) {
+                    penguinUserLabel.setText(user.getUserID());
+                    penguinUserLabel.setVisible(true);
+                    userAdded = true;
+                    usersInLabels.add(user);
+                }
+
+                // If no label spot is available, print a message
+                if (!userAdded) {
+                    System.out.println("No available spots for more users.");
+                }
+            });
+        } else {
+            System.out.println(user.getUserID() + " is already in the session.");
+        }
+        updateUserLabels();
     }
+
+
+    // Method to check if the user is already in the list
+    private boolean isUserAlreadyAdded(User user) {
+        // Iterate through the list to check if the user already exists
+        for (User userComparing: usersInSession)
+        {
+            if (userComparing.getUserID().equals(user.getUserID()))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void updateUserLabels()
+    {
+        for (User userComparing: usersInSession)
+        {
+            boolean hasLabel = true;
+            for (User userInLabel: usersInLabels)
+            {
+                if (userComparing.getUserID().equals(userInLabel.getUserID()))
+                {
+                    hasLabel = true;
+                }
+            }
+            if (hasLabel == false)
+            {
+                usersInLabels.add(userComparing);
+                // Update the UI on the JavaFX thread
+                Platform.runLater(() -> {
+
+                    // Update user labels based on availability
+                    if (!crabUserLabel.isVisible())
+                    {
+                        crabUserLabel.setText(userComparing.getUserID());
+                        crabUserLabel.setVisible(true);
+                    } else if (!foxUserLabel.isVisible()) {
+                        foxUserLabel.setText(userComparing.getUserID());
+                        foxUserLabel.setVisible(true);
+                    } else if (!penguinUserLabel.isVisible()) {
+                        penguinUserLabel.setText(userComparing.getUserID());
+                        penguinUserLabel.setVisible(true);
+                    } else {
+                        System.out.println("No available spots for more users.");
+                    }
+
+                });
+            }
+        }
+    }
+
+
+
 
 
     public void setTextArea(String text)

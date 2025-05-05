@@ -33,7 +33,7 @@ public class websocketcontroller {
 
     @MessageMapping("/initialState/{sessionCode}/{userID}")
     @SendTo("/initialState/{sessionCode}")
-    public User sendInitialState(@DestinationVariable String sessionCode, @DestinationVariable String userID, @Payload(required = false) String payload) {
+    public void sendInitialState(@DestinationVariable String sessionCode, @DestinationVariable String userID, @Payload(required = false) String payload) {
         System.out.println("Received initial state request for sessionCode: " + sessionCode + ", userID: " + userID);
         CRDTTree initialState = service.getInitialState(sessionCode);
         initialState.printCRDTTree();
@@ -41,14 +41,18 @@ public class websocketcontroller {
         System.out.println("Sent tree");
         initialState.printCRDTTree();
         System.out.println("Sent initial state to userID: " + userID + " for session: " + sessionCode);
-        for(User user: this.Users){
+        for (User user: this.Users){
             if(user.getUserID().equals(userID)){
-                return null;
+                return;
             }
         }
         User newuser = new User(userID);
         this.Users.add(newuser);
-        return newuser;
+        System.out.println("Sent new user: " + newuser.getUserID());
+        for (User user: this.Users)
+        {
+            messagingTemplate.convertAndSend("/topic/User/" + sessionCode, user);
+        }
     }
 
 
@@ -81,6 +85,5 @@ public class websocketcontroller {
         service.undo(sessionCode, operation.getNode().getUserID());
         return operation;
     }
-
     }
 

@@ -94,7 +94,7 @@ public class WebSocketConfig {
         }
     }
 
-    public void getUserList() {
+    public void getUserList(String sessionCode) {
         if (stompSession != null && stompSession.isConnected()) {
             String topic = "/topic/User/" + sessionCode;
             System.out.println("Subscribing to: " + topic + ", session connected: " + stompSession.isConnected());
@@ -105,10 +105,12 @@ public class WebSocketConfig {
                 }
 
                 public void handleFrame(StompHeaders headers, Object payload) {
-                    if (payload instanceof User) {
+                    if (payload instanceof User)
+                    {
                         User newUser = (User) payload;
                         if (userManagement != null) {
                             userManagement.accept(newUser);
+                            System.out.println("Accepted user for session: " + sessionCode);
                         }
                     }
 

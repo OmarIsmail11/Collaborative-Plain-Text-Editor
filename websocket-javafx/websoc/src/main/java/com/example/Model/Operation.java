@@ -4,8 +4,10 @@ package com.example.Model;
 public class Operation {
     private String type;
     private CRDTNode node;
+    private String OriginalType;
     private int index;
-    private String id;
+    private String UserID;
+    private int LineNumber;
     
 
     // Default constructor required for Jackson deserialization
@@ -18,12 +20,26 @@ public class Operation {
         this.index = index;
     }
 
+    public Operation(String type,int LineNumber,String UserID){
+        this.type = type;
+        this.LineNumber = LineNumber;
+        this.UserID = UserID;
+    }
+
     public String getType() {
         return type;
     }
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public void setOriginalType(String OriginalType) {
+        this.OriginalType = OriginalType;
+    }
+
+    public String getOriginalType() {
+        return OriginalType;
     }
 
     public CRDTNode getNode() {
@@ -44,10 +60,18 @@ public class Operation {
 
 
     public String getId() {
-        return id;
+        return UserID;
     }
 
     public void setId(String id) {
-        this.id = id;
+        this.UserID = id;
+    }
+
+    public int getLineNumber(){
+        return LineNumber;
+
+    }
+    public void setLineNumber(int line){
+        this.LineNumber = line;
     }
 }

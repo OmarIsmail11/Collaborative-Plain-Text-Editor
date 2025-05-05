@@ -1,7 +1,10 @@
 package com.example.Model;
+import com.example.Model.CRDTNode;
+import com.example.Model.CRDTTree;
+import com.example.Model.Operation;
 
 import java.util.Stack;
-
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -13,7 +16,9 @@ public class User {
     @JsonProperty("userID") // Explicitly define the property name in JSON if needed
     private String userID;
 
+
     @JsonProperty("undoStack")
+
     private Stack<Operation> undoStack;
 
     @JsonProperty("redoStack")
@@ -32,10 +37,7 @@ public class User {
         this.redoStack = new Stack<>();
     }
 
-    // Getter for userID
-    public String getUserID() {
-        return userID;
-    }
+
 
     // Setter for userID
     public void setUserID(String userID) {
@@ -63,6 +65,10 @@ public class User {
     }
 
     // Method to add operation to undo stack
+
+    public String getUserID() { return userID; }
+
+
     public void addToUndoStack(String type, CRDTNode node, int index) {
         undoStack.push(new Operation(type, node, index));
         redoStack.clear();
@@ -76,13 +82,19 @@ public class User {
         }
 
         Operation op = undoStack.pop();
+        op.setOriginalType(op.getType()); // Preserve original type (insert or delete)
+        op.setType("undo");
         redoStack.push(op);
-        if (op.getType().equals("insert")) op.getNode().setDeleted(true);
-        else if (op.getType().equals("delete")) op.getNode().setDeleted(false);
+
+
+        if ("insert".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(true);
+        } else if ("delete".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(false);
+        }
         return op;
     }
 
-    // Redo operation
     public Operation redo(CRDTTree crdtTree) {
         if (redoStack.isEmpty()) {
             System.out.println("Nothing to redo for user: " + userID);
@@ -90,10 +102,29 @@ public class User {
         }
 
         Operation op = redoStack.pop();
+        // OriginalType is already set by undo; do not overwrite
+        op.setType("redo");
         undoStack.push(op);
-        if (op.getType().equals("insert")) op.getNode().setDeleted(false);
-        else if (op.getType().equals("delete")) op.getNode().setDeleted(true);
+
+        if ("insert".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(false);
+        } else if ("delete".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(true);
+        }
         return op;
+    }
+
+
+
+
+    public void printUndoStack() {
+        for (Operation op : undoStack) {
+            op.getNode().printNode();
+        }
+    }
+
+    public Stack<Operation> getUndoStack() {
+        return this.undoStack;
     }
 }
 

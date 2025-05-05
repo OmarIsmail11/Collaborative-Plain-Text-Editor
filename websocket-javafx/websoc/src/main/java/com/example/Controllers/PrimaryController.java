@@ -7,6 +7,8 @@ import com.example.Model.User;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -24,6 +26,7 @@ import java.nio.file.Files;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
@@ -33,6 +36,7 @@ import javafx.stage.FileChooser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
 
 import javax.swing.*;
 import javax.swing.text.Caret;
@@ -104,8 +108,14 @@ public class PrimaryController {
     private volatile boolean isUpdating = false;
     private final Object uiUpdateLock = new Object();
     private int lastCaretPos = 0;
+
     public List<User> usersInSession = new ArrayList<>();
     public List<User> usersInLabels = new ArrayList<>();
+
+    private final ScheduledExecutorService displayScheduler = Executors.newSingleThreadScheduledExecutor();
+    private Map<String, Integer> userCursorLines = new HashMap<>(); // Track user cursor positions
+    private int lastSentLine = -1; // Track last sent line to avoid duplicate sends
+    Object cursorLock = new Object();
 
 
     @FXML
@@ -140,6 +150,17 @@ public class PrimaryController {
                 event.consume(); // Prevent further propagation of this key event
             }
         });
+//
+//        textEditor.caretPositionProperty().addListener(new ChangeListener<Integer>() {
+//            @Override
+//            public void changed(ObservableValue<? extends Integer> observable, Integer oldValue, Integer newValue) {
+//                if (newValue != null) {
+//                    handleCursorChange(newValue);
+//                } else {
+//                    System.err.println("Caret position is null");
+//                }
+//            }
+//        });
 
 
         Platform.runLater(() -> textEditor.requestFocus());
@@ -148,6 +169,46 @@ public class PrimaryController {
         System.out.println("Editor initialized. Read-only: " + isReadOnly);
         printInitializationStatus();
 
+    }
+    // Handle cursor position change
+    private void handleCursorChange(int caretPosition) {
+        int lineNumber = getLineNumberFromCaret(caretPosition);
+        if (lineNumber != lastSentLine) { // Only send if line changed
+            lastSentLine = lineNumber;
+            Operation cursorOp = new Operation("cursor", lineNumber, currentUser.getUserID());
+            webSocketClient.sendOperation(sessionCode, cursorOp);
+            localOperationIds.add(cursorOp.getId());
+            // Update local user's cursor position
+            userCursorLines.put(currentUser.getUserID(), lineNumber);
+            updateCursorDisplay();
+        }
+    }
+
+    // Update UI to display all users' cursor positions (runs every 500ms)
+    private void updateCursorDisplay() {
+        StringBuilder displayText = new StringBuilder("Cursor Positions:\n");
+
+        synchronized (cursorLock) {
+            userCursorLines.forEach((userID, line) -> {
+                displayText.append("User ").append(userID).append(": Line ").append(line).append("\n");
+            });
+        }
+        // Update JavaFX UI on the JavaFX Application Thread
+        //Platform.runLater(() -> cursorInfoLabel.setText(displayText.toString()));
+    }
+
+    private int getLineNumberFromCaret(int caretPosition) {
+        String text = textEditor.getText();
+        if (text.isEmpty() || caretPosition <= 0) {
+            return 1;
+        }
+        int lineCount = 1;
+        for (int i = 0; i < caretPosition && i < text.length(); i++) {
+            if (text.charAt(i) == '\n') {
+                lineCount++;
+            }
+        }
+        return lineCount;
     }
 
     // Debug method to check if UI elements are properly initialized
@@ -231,6 +292,7 @@ public class PrimaryController {
                     String operationId = "delete_" + delNode.getId() + "_" + System.currentTimeMillis();
                     localOperationIds.add(operationId);
                     Operation operation = new Operation("delete", delNode, caretPos);
+
                     operation.setId(operationId);
 
                     executorService.submit(() -> {
@@ -307,8 +369,7 @@ public class PrimaryController {
         try {
             StringBuilder content = new StringBuilder();
             crdtLock.lock();
-            System.out.println("Acquired crdtLock for UI update at " + System.currentTimeMillis());
-            System.out.println("UI update reading visibleNodes: " + crdtTree.getVisibleNodes());
+
 
             try {
                 for (CRDTNode node : crdtTree.getVisibleNodes()) {
@@ -316,7 +377,6 @@ public class PrimaryController {
                     System.out.println("text = " + content.toString());
                 }
             } finally {
-                System.out.println("Releasing crdtLock after UI read at " + System.currentTimeMillis());
                 crdtLock.unlock();
             }
 
@@ -346,67 +406,8 @@ public class PrimaryController {
     }
 
 
-    private void undoRemoteOp(Operation operation) {
-        if (operation == null || operation.getId() == null) {
-            System.err.println("Received null operation or operation ID");
-            return;
-        }
 
-        if (localOperationIds.contains(operation.getId())) {
-            System.out.println("Skipping local operation echo: " + operation.getType());
-            localOperationIds.remove(operation.getId());
-            return;
-        }
-
-        executorService.submit(() -> {
-            try {
-                crdtLock.lock();
-                System.out.println("Acquired crdtLock for operation: " + operation.getType() + " at " + System.currentTimeMillis());
-                System.out.println("Before operation, visibleNodes: " + crdtTree.getVisibleNodes());
-
-                try {
-                    System.out.println("Processing remote operation: " + operation.getType());
-
-                        if (operation.getNode() == null) {
-                            System.err.println("Insert operation has null node");
-                            return;}
-                            else if(operation.getNode()!= null) {
-                            for (CRDTNode node : crdtTree.getNodeList()) {
-                                if (operation.getNode() == node) {
-                                    if (operation.getType() == "insert") {
-                                        node.setDeleted(true);
-                                    } else {
-                                        node.setDeleted(false);
-                                    }
-                                }
-                            }
-                            System.out.println("After operation "+ crdtTree.getVisibleNodes());
-                            crdtTree.printCRDTTree();
-                        }
-                    else {
-                        System.err.println("Unknown operation type: " + operation.getType());
-                        return;
-                    }
-                } finally {
-                    System.out.println("Releasing crdtLock after operation at " + System.currentTimeMillis());
-                    crdtLock.unlock();
-                }
-
-                System.out.println("After operation, visibleNodes: " + crdtTree.getVisibleNodes());
-                updateTextEditorContent();
-
-            } catch (Exception e) {
-                System.err.println("Error processing remote operation: " + e.getMessage());
-            }
-        });
-
-
-    }
     public void handleRemoteOperation(Operation operation) {
-        if (operation == null || operation.getId() == null) {
-            System.err.println("Received null operation or operation ID");
-            return;
-        }
 
         if (localOperationIds.contains(operation.getId())) {
             System.out.println("Skipping local operation echo: " + operation.getType());
@@ -417,8 +418,6 @@ public class PrimaryController {
         executorService.submit(() -> {
             try {
                 crdtLock.lock();
-                System.out.println("Acquired crdtLock for operation: " + operation.getType() + " at " + System.currentTimeMillis());
-                System.out.println("Before operation, visibleNodes: " + crdtTree.getVisibleNodes());
 
                 try {
                     System.out.println("Processing remote operation: " + operation.getType());
@@ -428,7 +427,6 @@ public class PrimaryController {
                             return;
                         }
                         crdtTree.insert(operation.getNode());
-                        System.out.println("After operation "+ crdtTree.getVisibleNodes());
                         crdtTree.printCRDTTree();
                     } else if ("delete".equals(operation.getType())) {
                         if (operation.getNode() == null || operation.getIndex() < 0 || operation.getIndex() >= crdtTree.getVisibleNodes().size()) {
@@ -437,23 +435,140 @@ public class PrimaryController {
                         }
                         crdtTree.delete(operation.getIndex(), operation.getNode().getUserID());
                         crdtTree.printCRDTTree();
+                    } else if ("undo".equals(operation.getType())) {
+                        if (operation.getNode() == null) {
+                            System.err.println("Undo operation has null node");
+                            return;
+                        }
+                        System.out.println("Searching for node with ID: " + operation.getNode().getId());
+                        System.out.println("Node list IDs: " + crdtTree.getNodeList().stream().map(CRDTNode::getId).collect(Collectors.joining(", ")));
+                        boolean found = false;
+                        for (CRDTNode node : crdtTree.getNodeList()) {
+                            if (operation.getNode().getId().equals(node.getId())) {
+                                if ("insert".equals(operation.getOriginalType())) {
+                                    node.setDeleted(true);
+                                    this.crdtTree.rebuildFromNodeList();
+                                    System.out.println("Insert operation for " + node.getId() + " undone");
+                                } else if ("delete".equals(operation.getOriginalType())) {
+                                    node.setDeleted(false);
+                                    this.crdtTree.rebuildFromNodeList();
+                                    System.out.println("Delete operation for " + node.getId() + " undone");
+                                } else {
+                                    System.err.println("Invalid original operation type for undo: " + operation.getOriginalType() + " for node ID: " + node.getId());
+                                    return;
+                                }
+                                crdtTree.printCRDTTree();
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            System.err.println("No matching node found for undo with ID: " + operation.getNode().getId());
+                        }
+                    } else if ("redo".equals(operation.getType())) {
+                        if (operation.getNode() == null) {
+                            System.err.println("Redo operation has null node");
+                            return;
+                        }
+                        System.out.println("Searching for node with ID: " + operation.getNode().getId());
+                        System.out.println("Node list IDs: " + crdtTree.getNodeList().stream().map(CRDTNode::getId).collect(Collectors.joining(", ")));
+                        boolean found = false;
+                        for (CRDTNode node : crdtTree.getNodeList()) {
+                            if (operation.getNode().getId().equals(node.getId())) {
+                                if ("insert".equals(operation.getOriginalType())) {
+                                    node.setDeleted(false);
+                                    this.crdtTree.rebuildFromNodeList();
+                                    System.out.println("Insert operation for " + node.getId() + " redone");
+                                } else if ("delete".equals(operation.getOriginalType())) {
+                                    node.setDeleted(true);
+                                    this.crdtTree.rebuildFromNodeList();
+                                    System.out.println("Delete operation for " + node.getId() + " redone");
+                                } else {
+                                    System.err.println("Invalid original operation type for redo: " + operation.getOriginalType() + " for node ID: " + node.getId());
+                                    return;
+                                }
+                                crdtTree.printCRDTTree();
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            System.err.println("No matching node found for redo with ID: " + operation.getNode().getId());
+                        }
                     } else {
                         System.err.println("Unknown operation type: " + operation.getType());
                         return;
                     }
                 } finally {
-                    System.out.println("Releasing crdtLock after operation at " + System.currentTimeMillis());
                     crdtLock.unlock();
                 }
 
-                System.out.println("After operation, visibleNodes: " + crdtTree.getVisibleNodes());
                 updateTextEditorContent();
 
             } catch (Exception e) {
                 System.err.println("Error processing remote operation: " + e.getMessage());
             }
         });
-    }  @FXML
+    }
+
+    @FXML
+    private void undoAction() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in undoAction()");
+            return;
+        }
+        crdtLock.lock();
+        try {
+            if (!currentUser.getUndoStack().isEmpty()) {
+                Operation op = currentUser.undo(this.crdtTree);
+                if (op != null) {
+                    this.crdtTree.rebuildFromNodeList();
+                    this.crdtTree.printCRDTTree();
+                    updateTextEditorContent();
+                    System.out.println("Undid " + op.getOriginalType() + " on node " + op.getNode().getId());
+                    op.getNode().printNode();
+                    op.setType("undo");
+                    webSocketClient.sendOperation(this.sessionCode, op);
+                    localOperationIds.add(op.getId());
+                } else {
+                    System.out.println("Nothing to undo");
+                }
+            } else {
+                System.out.println("Nothing to undo");
+            }
+        } finally {
+            crdtLock.unlock();
+        }
+        System.out.println("Undo action triggered");
+    }
+
+    @FXML
+    private void redoAction() {
+        if (textEditor == null) {
+            System.err.println("TextEditor is null in redoAction()");
+            return;
+        }
+        crdtLock.lock();
+        try {
+            Operation op = currentUser.redo(this.crdtTree);
+            if (op != null) {
+                this.crdtTree.rebuildFromNodeList();
+                this.crdtTree.printCRDTTree();
+                updateTextEditorContent();
+                System.out.println("Redid " + op.getOriginalType() + " on node " + op.getNode().getId());
+                op.getNode().printNode();
+                op.setType("redo");
+                webSocketClient.sendOperation(this.sessionCode, op);
+                localOperationIds.add(op.getId());
+            } else {
+                System.out.println("Nothing to redo");
+            }
+        } finally {
+            crdtLock.unlock();
+        }
+        System.out.println("Redo action triggered");
+    }
+    @FXML
     private void copyViewerCode() {
         if (viewerCodeLabel == null) {
             System.err.println("viewerCodeLabel is null in copyViewerCode()");
@@ -483,47 +598,6 @@ public class PrimaryController {
         content.putString(text);
         clipboard.setContent(content);
     }
-
-    @FXML
-    private void undoAction() {
-        if (textEditor == null) {
-            System.err.println("TextEditor is null in undoAction()");
-            return;
-        }
-        crdtLock.lock();
-        if(!currentUser.getUndoStack().isEmpty()) {
-            Operation op = currentUser.undo(this.crdtTree);
-            this.crdtTree.rebuildFromNodeList();
-            this.crdtTree.printCRDTTree();
-            crdtLock.unlock();
-            updateTextEditorContent();
-            if (op != null) {
-                System.out.println("Undid " + op.getType() + " on node " + op.getNode().getId());
-                op.getNode().printNode();
-                webSocketClient.sendUndo(op);
-            }
-
-//        webSocketClient.sendOperation();
-            System.out.println("Undo action triggered");
-        }
-        System.out.println("nothing to undo");
-    }
-
-    @FXML
-    private void redoAction() {
-        if (textEditor == null) {
-            System.err.println("TextEditor is null in redoAction()");
-            return;
-        }
-        Operation op = currentUser.redo(this.crdtTree);
-        System.out.println("Redo " + op.getType() + " on node " + op.getNode().getId());
-        op.getNode().printNode();
-        this.crdtTree.printCRDTTree();
-        this.crdtTree.printText();
-        updateTextEditorContent();
-        System.out.println("Redo action triggered");
-    }
-
     @FXML
     private void saveAction() {
         System.out.println("Save action triggered");
@@ -701,7 +775,6 @@ public class PrimaryController {
         try {
             webSocketClient.setUserManagement(this::addUser);
             webSocketClient.setOperationHandler(this::handleRemoteOperation);
-            webSocketClient.setUndoHandler(this::undoRemoteOp);
             webSocketClient.setTextUpdateCallback(textContent -> {
                 Platform.runLater(() -> {
                     textEditor.setText(textContent);

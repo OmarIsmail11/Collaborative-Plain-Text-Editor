@@ -1,7 +1,9 @@
 com\example\config\WebSocketConfig$1.class
 com\example\Model\Document.class
+com\example\config\WebSocketConfig$3.class
 com\example\Controllers\NewDocumentDialogController.class
 com\example\config\WebSocketConfig$2.class
+com\example\config\WebSocketConfig$4.class
 com\example\Controllers\HomeController.class
 module-info.class
 com\example\App.class

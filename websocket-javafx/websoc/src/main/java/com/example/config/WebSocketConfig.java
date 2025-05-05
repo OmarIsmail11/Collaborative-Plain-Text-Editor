@@ -229,7 +229,12 @@ public class WebSocketConfig {
                         Operation operation = (Operation) payload;
                         System.out.println("Received undo from server: " + operation.getType());
                         if (undoHandler != null) {
-                            undoHandler.accept(operation);
+                            if(operation.getNode() != null){
+                                operation.getNode().printNode();
+                                System.out.println("A7AAAAAAAAAAAAAA");
+                                undoHandler.accept(operation);
+                            }
+
                         } else {
                             System.err.println("Operation handler is null");
                         }

@@ -62,6 +62,12 @@ public class websocketcontroller {
         if (operation.getType().equals("delete")) {
             service.delete(sessionCode, operation.getNode().getUserID(), operation.getIndex());
         }
+        if(operation.getType().equals("undo")){
+            service.undo(sessionCode, operation.getNode().getUserID());
+        }
+        if(operation.getType().equals("redo")){
+            service.redo(sessionCode, operation.getNode().getUserID());
+        }
         System.out.println("Broadcasting operation for: " + sessionCode);
         operation.getNode().printNode();
         return operation;

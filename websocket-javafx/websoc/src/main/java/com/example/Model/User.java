@@ -1,11 +1,13 @@
 package com.example.Model;
+import com.example.Model.CRDTNode;
+import com.example.Model.CRDTTree;
+import com.example.Model.Operation;
 
 import java.util.Stack;
-
+import java.util.stream.Collectors;
 
 public class User {
     private String userID;
-
     private Stack<Operation> undoStack;
     private Stack<Operation> redoStack;
 
@@ -16,6 +18,7 @@ public class User {
     }
 
     public String getUserID() { return userID; }
+
     public void addToUndoStack(String type, CRDTNode node, int index) {
         undoStack.push(new Operation(type, node, index));
         redoStack.clear();
@@ -28,13 +31,17 @@ public class User {
         }
 
         Operation op = undoStack.pop();
+        op.setOriginalType(op.getType()); // Preserve original type (insert or delete)
+        op.setType("undo");
         redoStack.push(op);
 
-        if (op.getType().equals("insert")) op.getNode().setDeleted(true);
-        else if (op.getType().equals("delete")) op.getNode().setDeleted(false);
+        if ("insert".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(true);
+        } else if ("delete".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(false);
+        }
         return op;
     }
-
 
     public Operation redo(CRDTTree crdtTree) {
         if (redoStack.isEmpty()) {
@@ -43,9 +50,15 @@ public class User {
         }
 
         Operation op = redoStack.pop();
+        // OriginalType is already set by undo; do not overwrite
+        op.setType("redo");
         undoStack.push(op);
-        if (op.getType().equals("insert")) op.getNode().setDeleted(false);
-        else if (op.getType().equals("delete")) op.getNode().setDeleted(true);
+
+        if ("insert".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(false);
+        } else if ("delete".equals(op.getOriginalType())) {
+            op.getNode().setDeleted(true);
+        }
         return op;
     }
 
@@ -59,4 +72,3 @@ public class User {
         return this.undoStack;
     }
 }
-

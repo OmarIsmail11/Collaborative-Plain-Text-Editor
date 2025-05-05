@@ -13,21 +13,80 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import com.editorbackend.CRDT.User;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 
 @Controller
 public class websocketcontroller {
     private final CRDTService service;
     private final SimpMessagingTemplate messagingTemplate;
-    public List<User> Users;
+    public Map<String,User> Users;
 
     @Autowired
     public websocketcontroller(CRDTService service, SimpMessagingTemplate messagingTemplate) {
         this.service = service;
         this.messagingTemplate = messagingTemplate;
-        this.Users = new ArrayList<>();
+        this.Users = new Map<String, User>() {
+            @Override
+            public int size() {
+                return 0;
+            }
+
+            @Override
+            public boolean isEmpty() {
+                return false;
+            }
+
+            @Override
+            public boolean containsKey(Object key) {
+                return false;
+            }
+
+            @Override
+            public boolean containsValue(Object value) {
+                return false;
+            }
+
+            @Override
+            public User get(Object key) {
+                return null;
+            }
+
+            @Override
+            public User put(String key, User value) {
+                return null;
+            }
+
+            @Override
+            public User remove(Object key) {
+                return null;
+            }
+
+            @Override
+            public void putAll(Map<? extends String, ? extends User> m) {
+
+            }
+
+            @Override
+            public void clear() {
+
+            }
+
+            @Override
+            public Set<String> keySet() {
+                return Set.of();
+            }
+
+            @Override
+            public Collection<User> values() {
+                return List.of();
+            }
+
+            @Override
+            public Set<Entry<String, User>> entrySet() {
+                return Set.of();
+            }
+        };
 
     }
 
@@ -41,16 +100,10 @@ public class websocketcontroller {
         System.out.println("Sent tree");
         initialState.printCRDTTree();
         System.out.println("Sent initial state to userID: " + userID + " for session: " + sessionCode);
-        for (User user: this.Users){
-            if(user.getUserID().equals(userID)){
-                return;
-            }
-        }
         User newuser = new User(userID);
-        this.Users.add(newuser);
+        Users.putIfAbsent(sessionCode, newuser);
         System.out.println("Sent new user: " + newuser.getUserID());
-        for (User user: this.Users)
-        {
+        for (User user : Users.values()) {
             messagingTemplate.convertAndSend("/topic/User/" + sessionCode, user);
         }
     }

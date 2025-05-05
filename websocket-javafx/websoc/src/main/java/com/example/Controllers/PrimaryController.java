@@ -150,18 +150,6 @@ public class PrimaryController {
                 event.consume(); // Prevent further propagation of this key event
             }
         });
-//
-//        textEditor.caretPositionProperty().addListener(new ChangeListener<Integer>() {
-//            @Override
-//            public void changed(ObservableValue<? extends Integer> observable, Integer oldValue, Integer newValue) {
-//                if (newValue != null) {
-//                    handleCursorChange(newValue);
-//                } else {
-//                    System.err.println("Caret position is null");
-//                }
-//            }
-//        });
-
 
         Platform.runLater(() -> textEditor.requestFocus());
 
@@ -170,19 +158,7 @@ public class PrimaryController {
         printInitializationStatus();
 
     }
-    // Handle cursor position change
-    private void handleCursorChange(int caretPosition) {
-        int lineNumber = getLineNumberFromCaret(caretPosition);
-        if (lineNumber != lastSentLine) { // Only send if line changed
-            lastSentLine = lineNumber;
-            Operation cursorOp = new Operation("cursor", lineNumber, currentUser.getUserID());
-            webSocketClient.sendOperation(sessionCode, cursorOp);
-            localOperationIds.add(cursorOp.getId());
-            // Update local user's cursor position
-            userCursorLines.put(currentUser.getUserID(), lineNumber);
-            updateCursorDisplay();
-        }
-    }
+
 
     // Update UI to display all users' cursor positions (runs every 500ms)
     private void updateCursorDisplay() {
@@ -408,6 +384,7 @@ public class PrimaryController {
 
 
     public void handleRemoteOperation(Operation operation) {
+
 
         if (localOperationIds.contains(operation.getId())) {
             System.out.println("Skipping local operation echo: " + operation.getType());

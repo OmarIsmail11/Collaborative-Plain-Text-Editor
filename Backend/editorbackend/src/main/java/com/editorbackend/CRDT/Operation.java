@@ -21,6 +21,12 @@ public class Operation {
         this.index = index;
     }
 
+    public Operation(String type,int LineNumber,String UserID){
+        this.type = type;
+        this.LineNumber = LineNumber;
+        this.UserID = UserID;
+    }
+
     public String getType() {
         return type;
     }
@@ -54,25 +60,19 @@ public class Operation {
     }
 
 
-    public String UserID() {
+    public String getId() {
         return UserID;
     }
 
-    public void setUserID(String id) {
+    public void setId(String id) {
         this.UserID = id;
     }
 
-    public int getLineNumber() {
+    public int getLineNumber(){
         return LineNumber;
 
     }
-
-    public void setLineNumber(int line) {
+    public void setLineNumber(int line){
         this.LineNumber = line;
     }
-
 }
-// insert 
-// push --> undo 
-// pop--> insert setdeleted 
-//
